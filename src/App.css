@@ -203,8 +203,8 @@ nav a:hover::after { right: 0; }
 .social-links a { display: flex; align-items: center; gap: 9px; padding: 11px 15px; border: 1px solid var(--line); background: white; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; font-weight: 800; }
 .social-links svg { width: 16px; fill: var(--navy); stroke: none; }
 .contact-form { padding: 36px; background: white; border-top: 6px solid var(--red); box-shadow: 12px 12px 0 #dce3e8; }
-.contact-form label { display: block; color: var(--navy); text-transform: uppercase; letter-spacing: .13em; font-size: 10px; font-weight: 900; margin-bottom: 24px; }
-.contact-form input, .contact-form textarea { display: block; width: 100%; margin-top: 9px; padding: 13px 0; border: 0; border-bottom: 1px solid #cdd4d9; background: transparent; color: var(--ink); outline: 0; resize: vertical; text-transform: none; letter-spacing: 0; }
+.contact-form label { display: block; color: var(--navy); text-transform: uppercase; letter-spacing: .13em; font-size: 14px; font-weight: 900; margin-bottom: 24px; }
+.contact-form input, .contact-form textarea { display: block; width: 100%; margin-top: 9px; padding: 14px 0; border: 0; border-bottom: 1px solid #cdd4d9; background: transparent; color: var(--ink); font-size: 18px; outline: 0; resize: vertical; text-transform: none; letter-spacing: 0; }
 .contact-form input:focus, .contact-form textarea:focus { border-color: var(--red); }
 .contact-form button { width: 100%; padding: 18px; }
 

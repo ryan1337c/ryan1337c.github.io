@@ -36,7 +36,7 @@ function App() {
     const message = String(formData.get('message') ?? '')
     const subject = encodeURIComponent(`Portfolio inquiry from ${name}`)
     const body = encodeURIComponent(`From: ${name}\nEmail: ${email}\n\n${message}`)
-    window.location.href = `mailto:hello@yourname.com?subject=${subject}&body=${body}`
+    window.location.href = `mailto:ryanchen1337@gmail.com?subject=${subject}&body=${body}`
   }
 
   return (
@@ -44,8 +44,8 @@ function App() {
       <WavyRibbon />
       <header className="site-header">
         <a className="brand" href="#introduction" aria-label="Back to top">
-          <span>YN</span>
-          <strong>Your Name</strong>
+          <span>RC</span>
+          <strong>Ryan Chen</strong>
         </a>
         <nav aria-label="Main navigation">
           <a href="#introduction">About</a>
@@ -63,8 +63,8 @@ function App() {
           <p className="eyebrow"><span /> Available for opportunities</p>
           <h1>Building digital<br />experiences with<br /><em>purpose.</em></h1>
           <p className="hero-bio">
-            Hi, I'm <strong>Your Name</strong> — a developer and creative problem-solver
-            focused on turning thoughtful ideas into useful, memorable products.
+            Hi, I'm <strong>Ryan Chen</strong> — a software engineering who enjoys building fun and useful
+            products that people might enjoy using.
           </p>
           <div className="hero-actions">
             <a className="primary-button" href="#projects">View my work <ArrowIcon /></a>
@@ -79,16 +79,16 @@ function App() {
                 <span className="psa-mark">PORT<br /><b>FOLIO</b></span>
                 <div>
                   <small>PROFESSIONAL PROFILE</small>
-                  <strong>YOUR NAME</strong>
-                  <span>DEVELOPER · DESIGNER</span>
+                  <strong>Ryan Chen</strong>
+                  <span>Aspiring Software Engineer</span>
                 </div>
                 <div className="grade"><small>GRADE</small><b>10</b></div>
               </div>
-              <div className="serial">CERT 2026-YOUR-NAME <span className="barcode" /></div>
+              <div className="serial">CERT 2026-RYAN-CHEN <span className="barcode" /></div>
             </div>
             <div className="profile-card">
               <div className="portrait-placeholder">
-                <span>YN</span>
+                <span>RC</span>
                 <small>PHOTO / PORTRAIT</small>
               </div>
               <div className="card-footer">
@@ -175,7 +175,7 @@ function App() {
           <p className="eyebrow"><span /> Start a conversation</p>
           <h2>Have an idea?<br /><em>Let's build it.</em></h2>
           <p>I'm always happy to talk about new projects, creative ideas, or opportunities to collaborate.</p>
-          <a className="email-link" href="mailto:hello@yourname.com">hello@yourname.com <ArrowIcon /></a>
+          <a className="email-link" href="mailto:ryanchen1337@gmail.com">ryanchen1337@gmail.com <ArrowIcon /></a>
           <div className="social-links">
             <a href="https://github.com/yourusername" target="_blank" rel="noreferrer"><GithubIcon /> GitHub</a>
             <a href="https://linkedin.com/in/yourusername" target="_blank" rel="noreferrer"><LinkedinIcon /> LinkedIn</a>
@@ -190,7 +190,7 @@ function App() {
       </section>
 
       <footer>
-        <div className="footer-brand"><span>YN</span><strong>Your Name</strong></div>
+        <div className="footer-brand"><span>RC</span><strong>Ryan Chen</strong></div>
         <p>Designed &amp; built with intention. © 2026</p>
         <a href="#introduction">Back to top ↑</a>
       </footer>
