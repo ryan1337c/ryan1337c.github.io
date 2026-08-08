@@ -134,7 +134,7 @@ function RibbonMesh() {
       new Vector3(width * 0.48, -height * 5.68, 0),
     ]
     const curve = new CatmullRomCurve3(points, false, 'catmullrom', 0.42)
-    const segments = 360
+    const segments = 1440
     const positions: number[] = []
     const uvs: number[] = []
     const indices: number[] = []
@@ -143,8 +143,8 @@ function RibbonMesh() {
 
     for (let index = 0; index <= segments; index += 1) {
       const t = index / segments
-      const center = curve.getPointAt(t)
-      const tangent = curve.getTangentAt(t).normalize()
+      const center = curve.getPoint(t)
+      const tangent = curve.getTangent(t).normalize()
       const normal = new Vector3(-tangent.y, tangent.x, 0).normalize()
       const ribbonWidth = Math.min(width * 0.15, 2.5)
       const left = center.clone().addScaledVector(normal, ribbonWidth)
@@ -204,7 +204,7 @@ export default function WavyRibbon() {
       <Canvas
         orthographic
         camera={{ position: [0, 0, 10], zoom: 80 }}
-        dpr={[1, 1.5]}
+        dpr={[1.5, 2]}
         gl={{ alpha: true, antialias: true }}
       >
         <RibbonMesh />
