@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react'
 import './App.css'
+import WavyRibbon from './WavyRibbon'
 
 const projects = [
   { number: '01', title: 'Project coming soon', tag: 'Web Application' },
@@ -40,6 +41,7 @@ function App() {
 
   return (
     <main>
+      <WavyRibbon />
       <header className="site-header">
         <a className="brand" href="#introduction" aria-label="Back to top">
           <span>YN</span>
