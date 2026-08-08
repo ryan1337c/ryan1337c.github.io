@@ -14,19 +14,34 @@ import {
 const vertexShader = `
   uniform float uTime;
   uniform vec2 uPointer;
+  attribute vec2 aRibbonNormal;
+  attribute float aSide;
   varying vec2 vUv;
   varying float vFold;
+  varying float vTwist;
+  varying float vDepth;
+  varying float vConcavity;
 
   void main() {
     vUv = uv;
     vec3 p = position;
-    float longWave = sin(uv.y * 34.0 - uTime * 0.9);
-    float fineWave = cos(uv.y * 71.0 + uTime * 1.3);
-    float pointerWave = sin((uv.y + uPointer.y * 0.08) * 18.0 + uPointer.x);
+    float phase = uTime * 0.15;
+    float longWave = sin(uv.y * 12.0 - phase);
+    float pointerWave = sin((uv.y + uPointer.y * 0.06) * 17.0 + uPointer.x);
+    float travellingTwist = sin(uv.y * 9.0 + phase) * 0.24;
+    float twist = uv.y * 20.0 - phase + travellingTwist;
 
-    p.z += longWave * 0.24 + fineWave * 0.07 + pointerWave * 0.05;
-    p.x += sin(uv.y * 22.0 + uTime * 0.45) * 0.08;
+    // Rotate every point around the ribbon's centerline. This turns the
+    // strip through full revolutions like a towel being wrung by two hands.
+    p.xy += aRibbonNormal * aSide * (cos(twist) - 1.0);
+    p.z += aSide * sin(twist);
+    p.z += longWave * 0.08 + pointerWave * 0.04;
+    p.x += sin(uv.y * 8.0 + phase) * 0.035;
+
+    vTwist = twist;
     vFold = longWave * 0.5 + 0.5;
+    vDepth = p.z;
+    vConcavity = max(0.0, -sin(uv.y * 12.0 - phase));
 
     gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
   }
@@ -36,23 +51,56 @@ const fragmentShader = `
   uniform float uTime;
   varying vec2 vUv;
   varying float vFold;
+  varying float vTwist;
+  varying float vDepth;
+  varying float vConcavity;
+
+  float threadLine(float coordinate, float width) {
+    float distanceToCenter = abs(fract(coordinate) - 0.5);
+    return 1.0 - smoothstep(width, width + 0.08, distanceToCenter);
+  }
 
   void main() {
-    vec3 blue = vec3(0.27, 0.58, 0.78);
-    vec3 ice = vec3(0.88, 0.95, 0.98);
-    vec3 red = vec3(0.94, 0.10, 0.26);
-    vec3 pink = vec3(1.0, 0.45, 0.57);
+    float phase = uTime * 0.15;
+    vec3 blue = vec3(0.22, 0.53, 0.76);
+    vec3 ice = vec3(0.82, 0.93, 0.98);
+    vec3 red = vec3(0.91, 0.07, 0.22);
+    vec3 pink = vec3(1.0, 0.39, 0.52);
 
-    float flow = sin(vUv.y * 24.0 - uTime * 0.75) * 0.5 + 0.5;
+    float flow = sin(vUv.y * 12.0 - phase) * 0.5 + 0.5;
     vec3 leftColor = mix(blue, ice, flow * 0.48);
     vec3 rightColor = mix(red, pink, flow * 0.35);
     vec3 color = mix(leftColor, rightColor, smoothstep(0.05, 0.95, vUv.x));
 
-    float sheen = pow(max(0.0, sin(vUv.x * 3.14159)), 2.5);
-    color += sheen * (0.15 + vFold * 0.12);
-    float edge = smoothstep(0.0, 0.05, vUv.x) * smoothstep(1.0, 0.95, vUv.x);
+    // Individual yarns follow the length of the strip. The small sideways
+    // drift keeps them organic while preserving the clear top-to-bottom grain.
+    float yarnCoordinate = vUv.x * 142.0 + sin(vUv.y * 32.0 + phase) * 0.04;
+    float yarn = threadLine(yarnCoordinate, 0.30);
+    float yarnCore = threadLine(yarnCoordinate + 0.15, 0.12);
+    color *= 0.77 + yarn * 0.23;
+    color += yarnCore * 0.10;
 
-    gl_FragColor = vec4(color, edge * 0.78);
+    // Fake directional lighting follows the physical twist from the vertex
+    // shader, producing a bright face and deep folds as the ribbon turns.
+    float facingLight = cos(vTwist) * 0.5 + 0.5;
+    float depthShade = smoothstep(-2.4, 2.4, vDepth);
+    color *= 0.60 + facingLight * 0.40;
+    color += depthShade * 0.10;
+
+    // Fold occlusion darkens the inward-facing part of each broad bend.
+    // Smooth interpolation avoids a visible boundary when the face turns over.
+    float foldDirection = smoothstep(-0.65, 0.65, sin(vTwist));
+    float foldedEdge = mix(1.0 - vUv.x, vUv.x, foldDirection);
+    float foldShadow = vConcavity * smoothstep(0.18, 0.92, foldedEdge);
+    float turnShadow = pow(1.0 - abs(cos(vTwist)), 2.2) * 0.22;
+    color *= 1.0 - foldShadow * 0.34 - turnShadow;
+
+    float centerSheen = pow(max(0.0, sin(vUv.x * 3.14159)), 5.0);
+    float movingSheen = pow(max(0.0, sin(vUv.y * 16.0 - phase + vUv.x * 2.0)), 12.0);
+    color += centerSheen * movingSheen * (0.2 + vFold * 0.12);
+    float edge = smoothstep(0.0, 0.025, vUv.x) * smoothstep(1.0, 0.975, vUv.x);
+
+    gl_FragColor = vec4(color, edge * 0.88);
   }
 `
 
@@ -90,19 +138,22 @@ function RibbonMesh() {
     const positions: number[] = []
     const uvs: number[] = []
     const indices: number[] = []
+    const ribbonNormals: number[] = []
+    const sides: number[] = []
 
     for (let index = 0; index <= segments; index += 1) {
       const t = index / segments
       const center = curve.getPointAt(t)
       const tangent = curve.getTangentAt(t).normalize()
       const normal = new Vector3(-tangent.y, tangent.x, 0).normalize()
-      const pulse = 1 + Math.sin(t * Math.PI * 8) * 0.12
-      const ribbonWidth = Math.min(width * 0.15, 2.5) * pulse
+      const ribbonWidth = Math.min(width * 0.15, 2.5)
       const left = center.clone().addScaledVector(normal, ribbonWidth)
       const right = center.clone().addScaledVector(normal, -ribbonWidth)
 
       positions.push(left.x, left.y, left.z, right.x, right.y, right.z)
       uvs.push(0, t, 1, t)
+      ribbonNormals.push(normal.x, normal.y, normal.x, normal.y)
+      sides.push(ribbonWidth, -ribbonWidth)
 
       if (index < segments) {
         const offset = index * 2
@@ -113,6 +164,8 @@ function RibbonMesh() {
     const result = new BufferGeometry()
     result.setAttribute('position', new Float32BufferAttribute(positions, 3))
     result.setAttribute('uv', new Float32BufferAttribute(uvs, 2))
+    result.setAttribute('aRibbonNormal', new Float32BufferAttribute(ribbonNormals, 2))
+    result.setAttribute('aSide', new Float32BufferAttribute(sides, 1))
     result.setIndex(indices)
     result.computeVertexNormals()
     return result
