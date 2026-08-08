@@ -207,6 +207,9 @@ nav a:hover::after { right: 0; }
 .contact-form input, .contact-form textarea { display: block; width: 100%; margin-top: 9px; padding: 14px 0; border: 0; border-bottom: 1px solid #cdd4d9; background: transparent; color: var(--ink); font-size: 18px; outline: 0; resize: vertical; text-transform: none; letter-spacing: 0; }
 .contact-form input:focus, .contact-form textarea:focus { border-color: var(--red); }
 .contact-form button { width: 100%; padding: 18px; }
+.contact-form button:disabled { opacity: .7; cursor: not-allowed; transform: none; }
+.contact-form-status { margin-top: 16px; color: var(--navy); font-size: 14px; font-weight: 700; text-transform: none; letter-spacing: 0; }
+.contact-form-status--error { color: var(--red); }
 
 footer { display: flex; align-items: center; justify-content: space-between; padding: 30px clamp(24px, 8vw, 140px); background: var(--navy-dark); color: white; z-index: 2; }
 footer p, footer a { font-size: 9px; text-transform: uppercase; letter-spacing: .13em; color: #9aabba; }
