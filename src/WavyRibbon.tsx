@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
   BufferGeometry,
   CatmullRomCurve3,
@@ -107,11 +107,19 @@ const fragmentShader = `
 function RibbonMesh() {
   const material = useRef<ShaderMaterial>(null)
   const group = useRef<Group>(null)
+  const storySection = useRef<HTMLElement | null>(null)
   const { viewport } = useThree()
   const reducedMotion = useMemo(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     [],
   )
+
+  useEffect(() => {
+    storySection.current = document.querySelector<HTMLElement>('.slab-story')
+    return () => {
+      storySection.current = null
+    }
+  }, [])
 
   const geometry = useMemo(() => {
     const width = viewport.width
@@ -175,7 +183,27 @@ function RibbonMesh() {
     if (!material.current || !group.current) return
     if (!reducedMotion) material.current.uniforms.uTime.value += delta
     material.current.uniforms.uPointer.value.lerp(state.pointer, 0.035)
-    group.current.position.y = window.scrollY / 80
+
+    const lockedBodyOffset = document.body.style.position === 'fixed'
+      ? Math.abs(Number.parseFloat(document.body.style.top) || 0)
+      : window.scrollY
+    let ribbonScrollPosition = lockedBodyOffset
+
+    if (storySection.current) {
+      const storyBounds = storySection.current.getBoundingClientRect()
+      const storyTop = lockedBodyOffset + storyBounds.top
+      const storyScrollDistance = Math.max(
+        0,
+        storySection.current.offsetHeight - window.innerHeight,
+      )
+      const consumedStoryScroll = Math.max(
+        0,
+        Math.min(storyScrollDistance, lockedBodyOffset - storyTop),
+      )
+      ribbonScrollPosition -= consumedStoryScroll
+    }
+
+    group.current.position.y = ribbonScrollPosition / 80
   })
 
   return (

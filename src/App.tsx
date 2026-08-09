@@ -1,14 +1,8 @@
 import emailjs from '@emailjs/browser'
 import { useState, type FormEvent } from 'react'
 import './App.css'
+import ProjectSlabCarousel from './ProjectSlabCarousel'
 import WavyRibbon from './WavyRibbon'
-
-const projects = [
-  { number: '01', title: 'Project coming soon', tag: 'Web Application' },
-  { number: '02', title: 'Project coming soon', tag: 'Product Design' },
-  { number: '03', title: 'Project coming soon', tag: 'Creative Development' },
-  { number: '04', title: 'Project coming soon', tag: 'Case Study' },
-]
 
 const ArrowIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -30,6 +24,7 @@ const LinkedinIcon = () => (
 
 function App() {
   const [formStatus, setFormStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -66,15 +61,27 @@ function App() {
           <span>RC</span>
           <strong>Ryan Chen</strong>
         </a>
-        <nav aria-label="Main navigation">
-          <a href="#introduction">About</a>
-          <a href="#projects">Projects</a>
-          <a href="#skills">Skills</a>
-          <a href="#contact">Contact</a>
+        <nav className={`main-nav${isMenuOpen ? ' main-nav--open' : ''}`} id="main-navigation" aria-label="Main navigation">
+          <a href="#introduction" onClick={() => setIsMenuOpen(false)}>About</a>
+          <a href="#projects" onClick={() => setIsMenuOpen(false)}>Projects</a>
+          <a href="#skills" onClick={() => setIsMenuOpen(false)}>Skills</a>
+          <a href="#contact" onClick={() => setIsMenuOpen(false)}>Contact</a>
         </nav>
         <a className="header-cta" href="#contact">
           Let's talk <ArrowIcon />
         </a>
+        <button
+          className={`menu-toggle${isMenuOpen ? ' menu-toggle--open' : ''}`}
+          type="button"
+          aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-controls="main-navigation"
+          aria-expanded={isMenuOpen}
+          onClick={() => setIsMenuOpen((open) => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
       </header>
 
       <section className="hero-section" id="introduction">
@@ -111,7 +118,7 @@ function App() {
                 <small>PHOTO / PORTRAIT</small>
               </div>
               <div className="card-footer">
-                <span>CREATIVE TECHNOLOGIST</span>
+                <span>Software Engineer</span>
                 <b>ROOKIE CARD</b>
               </div>
             </div>
@@ -124,37 +131,24 @@ function App() {
         <div className="section-heading">
           <div><span>01</span><p>Selected work</p></div>
           <h2>Personal<br /><em>projects.</em></h2>
-          <p>A collection of things I've designed, built, and learned from. Full case studies are on the way.</p>
+          <p>A collection of my personal projects that I have worked on.</p>
         </div>
-        <div className="project-grid">
-          {projects.map((project) => (
-            <article className="project-card" key={project.number}>
-              <div className="project-placeholder">
-                <span>{project.number}</span>
-                <div className="mini-slab"><i /><i /><i /></div>
-              </div>
-              <div className="project-meta">
-                <div><small>{project.tag}</small><h3>{project.title}</h3></div>
-                <span className="circle-arrow"><ArrowIcon /></span>
-              </div>
-            </article>
-          ))}
-        </div>
+        <ProjectSlabCarousel />
       </section>
 
       <section className="section skills-section" id="skills">
         <div className="section-heading light-heading">
           <div><span>02</span><p>What I bring</p></div>
-          <h2>Skills &amp;<br /><em>credentials.</em></h2>
+          <h2>Skills</h2>
         </div>
         <div className="skill-columns">
           <div className="skill-block">
             <span className="skill-number">01</span>
             <h3>Technical skills</h3>
             <ul>
-              <li>Frontend development</li>
-              <li>UI / UX design</li>
-              <li>Responsive web design</li>
+              <li>Full Stack Development</li>
+              <li>Java / Python / JavaScript / TypeScript</li>
+              <li>Machine Learning</li>
               <li>Version control &amp; Git</li>
             </ul>
           </div>
@@ -172,18 +166,19 @@ function App() {
             <span className="skill-number">03</span>
             <h3>Education</h3>
             <ul>
-              <li>Your degree or program</li>
-              <li>Your school or institution</li>
-              <li>Graduation year</li>
+              <li>Bachelor of Science in Computer Science, Honours</li>
+              <li>York University</li>
+              <li>2020-2026</li>
             </ul>
           </div>
           <div className="skill-block">
             <span className="skill-number">04</span>
-            <h3>Awards</h3>
+            <h3>Interests</h3>
             <ul>
-              <li>Award or recognition</li>
-              <li>Certification</li>
-              <li>Achievement</li>
+              <li>Artificial Intelligence</li>
+              <li>Computer Vision / Augmented Reality</li>
+              <li>Game Development</li>
+              <li>Web Development</li>
             </ul>
           </div>
         </div>
@@ -191,7 +186,7 @@ function App() {
 
       <section className="section contact-section" id="contact">
         <div className="contact-intro">
-          <p className="eyebrow"><span /> Start a conversation</p>
+          <p className="eyebrow"><span /> Contact</p>
           <h2>Have an idea?<br /><em>Let's build it.</em></h2>
           <p>I'm always happy to talk about new projects, creative ideas, or opportunities to collaborate.</p>
           <a className="email-link" href="mailto:ryanchen1337@gmail.com">ryanchen1337@gmail.com <ArrowIcon /></a>
@@ -220,7 +215,7 @@ function App() {
 
       <footer>
         <div className="footer-brand"><span>RC</span><strong>Ryan Chen</strong></div>
-        <p>Designed &amp; built with intention. © 2026</p>
+        <p>Designed &amp; built with 💜. © 2026</p>
         <a href="#introduction">Back to top ↑</a>
       </footer>
     </main>
