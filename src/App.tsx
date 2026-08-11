@@ -188,7 +188,7 @@ function App() {
         <div className="contact-intro">
           <p className="eyebrow"><span /> Contact</p>
           <h2>Want to get in touch?<br /><em>Let's chat!</em></h2>
-          <p>I'm always happy to talk about creative ideas, opportunities to collaborate, or just random things..</p>
+          <p>I'm always happy to talk about creative ideas, opportunities to collaborate, or just random things.</p>
           <a className="email-link" href="mailto:ryanchen1337@gmail.com">ryanchen1337@gmail.com <ArrowIcon /></a>
           <div className="social-links">
             <a href="https://github.com/ryan1337c" target="_blank" rel="noreferrer"><GithubIcon /> GitHub</a>
