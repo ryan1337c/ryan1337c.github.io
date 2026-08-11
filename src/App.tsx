@@ -1,6 +1,7 @@
 import emailjs from '@emailjs/browser'
 import { useState, type FormEvent } from 'react'
 import './App.css'
+import portraitImage from './assets/dragonite_git.jpg'
 import ProjectSlabCarousel from './ProjectSlabCarousel'
 import WavyRibbon from './WavyRibbon'
 
@@ -87,7 +88,7 @@ function App() {
       <section className="hero-section" id="introduction">
         <div className="hero-copy">
           <p className="eyebrow"><span /> Available for opportunities</p>
-          <h1>Building digital<br />experiences with<br /><em>purpose.</em></h1>
+          <h1>My<br /><em>Portfolio</em></h1>
           <p className="hero-bio">
             Hi, I'm <strong>Ryan Chen</strong> — a software engineering who enjoys building fun and useful
             products that people might enjoy using.
@@ -110,12 +111,11 @@ function App() {
                 </div>
                 <div className="grade"><small>GRADE</small><b>10</b></div>
               </div>
-              <div className="serial">CERT 2026-RYAN-CHEN <span className="barcode" /></div>
+              <div className="serial">CERT 2026-RYAN-CHEN <a href="https://github.com/ryan1337c" target="_blank" rel="noreferrer" className="barcode" /></div>
             </div>
             <div className="profile-card">
               <div className="portrait-placeholder">
-                <span>RC</span>
-                <small>PHOTO / PORTRAIT</small>
+                <img src={portraitImage} alt="Portrait of Ryan Chen" />
               </div>
               <div className="card-footer">
                 <span>Software Engineer</span>
@@ -187,8 +187,8 @@ function App() {
       <section className="section contact-section" id="contact">
         <div className="contact-intro">
           <p className="eyebrow"><span /> Contact</p>
-          <h2>Have an idea?<br /><em>Let's build it.</em></h2>
-          <p>I'm always happy to talk about new projects, creative ideas, or opportunities to collaborate.</p>
+          <h2>Want to get in touch?<br /><em>Let's chat!</em></h2>
+          <p>I'm always happy to talk about creative ideas, opportunities to collaborate, or just random things..</p>
           <a className="email-link" href="mailto:ryanchen1337@gmail.com">ryanchen1337@gmail.com <ArrowIcon /></a>
           <div className="social-links">
             <a href="https://github.com/ryan1337c" target="_blank" rel="noreferrer"><GithubIcon /> GitHub</a>

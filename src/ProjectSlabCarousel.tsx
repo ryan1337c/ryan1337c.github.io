@@ -1,20 +1,257 @@
-import { RoundedBox } from '@react-three/drei'
-import { Canvas, type ThreeEvent, useFrame } from '@react-three/fiber'
+import { RoundedBox, useTexture } from '@react-three/drei'
+import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CanvasTexture,
   Color,
   Group,
   LinearFilter,
+  MeshBasicMaterial,
+  PerspectiveCamera,
   SRGBColorSpace,
 } from 'three'
+import pokemonCardBack from './assets/back_pokemon.png'
+import meiganImg from './assets/meigan.png'
+import omniImg from './assets/omni.png'
+import fontimizeImg from './assets/fontimize.png'
+import kirbyImg from './assets/kirby.webp'
 
-const projects = [
-  { title: 'Meigan', type: 'iOS Application', year: '2026', color: '#d7193f' },
-  { title: 'Omni', type: 'Web Application', year: '2025-2026', color: '#6f9fbe' },
-  { title: 'Fontimize', type: 'Chrome Extension', year: '2025', color: '#18334e' },
-  { title: 'Kirby Recreation', type: '2D Platformers', year: '2025', color: '#8a98a7' },
+type Project = {
+  title: string
+  type: string
+  year: string
+  color: string
+  img: string
+  mediaFit: 'cover' | 'contain'
+  summary: string
+  abilityTitle: string
+  abilityText: string
+  attackTitle: string
+  attackMetric: string
+  attackText: string
+  weakness: string
+  resistance: string
+  illustrator?: string
+  copyright?: string
+  level?: string
+  hp?: string
+  link?: string
+}
+
+const projects: Project[] = [
+  {
+    title: 'Meigan',
+    type: 'iOS Application',
+    year: '2026',
+    color: '#d7193f',
+    img: meiganImg,
+    mediaFit: 'cover',
+    summary: 'SwiftUI · ARKit/RealityKit · on-device Core ML (YOLO) · Supabase',
+    abilityTitle: 'Ability: Standout Feature',
+    abilityText: 'Measure real-world distances, surfaces, and objects in AR using the device camera and LiDAR; provides fast, accurate 3D-anchored measurements and flattened surface exports so users can document, plan, or share physical dimensions without manual measuring tools.',
+    attackTitle: 'Ruler, Flatten & Identify',
+    attackMetric: '90+',
+    attackText: 'Use Ruler mode to place connected measurement points with snapping and live previews; flatten four-corner surfaces into rectified images and run on-device object detection to label and measure objects for export/share.',
+    weakness: 'iOS device & Apple signing; Supabase for Pro; device-dependent performance',
+    resistance: 'On-device Core ML & LiDAR; native SwiftUI + ARKit',
+    illustrator: 'Ryan Chen',
+    copyright: '©2026 Ryan Chen',
+    link: 'https://github.com/ryan1337c/meigan',
+  },
+  {
+    title: 'Omni',
+    type: 'Web Application',
+    year: '2025-2026',
+    color: '#6f9fbe',
+    img: omniImg,
+    mediaFit: 'contain',
+    summary: 'Next.js (TypeScript) · Tailwind · Supabase · OpenAI/Claude/DeepSeek integrations',
+    abilityTitle: 'Ability: Standout Feature',
+    abilityText: 'Act as an all-in-one AI copilot that routes prompts to the best model for a task (chat, code help, image generation, document analysis); delivers higher-quality, faster results and keeps conversation history so users can complete creative and productive workflows without switching tools',
+    attackTitle: 'Core Feature / Integration',
+    attackMetric: '80',
+    attackText: 'Generate images, tailor resumes, and analyze uploaded documents via model APIs to produce polished assets and structured outputs.',
+    weakness: 'External API keys (OpenAI/DeepSeek); cost & latency risk',
+    resistance: 'Model-agnostic routing; Supabase-backed persistence',
+    illustrator: 'Ryan Chen',
+    copyright: '©2026 Ryan Chen',
+    link: 'https://github.com/ryan1337c/omni',
+  },
+  {
+    title: 'Fontimize',
+    type: 'Chrome Extension',
+    year: '2025',
+    color: '#18334e',
+    img: fontimizeImg,
+    mediaFit: 'contain',
+    summary: 'Chrome extension · JS background/content/popup · injected CSS + webfonts',
+    abilityTitle: 'Ability: Standout Feature',
+    abilityText: 'Customize website typography and highlight content in-browser by injecting fonts, sizes, spacing, and styles per site; improves readability and accessibility so users can tailor the web to their personal reading preferences instantly.',
+    attackTitle: 'Core Feature / Integration',
+    attackMetric: '70+',
+    attackText: 'Inject CSS and webfonts and provide a highlight tool to instantly adjust typography and emphasize content per site.',
+    weakness: 'Chrome-only; injected CSS can break complex sites; requires permissions',
+    resistance: 'Client-side only; instant local style changes; no backend',
+    illustrator: 'Ryan Chen',
+    copyright: '©2026 Ryan Chen',
+    link: 'https://github.com/ryan1337c/fontimize',
+  },
+  {
+    title: 'Kirby Game',
+    type: '2D Platformers',
+    year: '2025',
+    color: '#8a98a7',
+    img: kirbyImg,
+    mediaFit: 'cover',
+    summary: 'Java (JDK 8+) desktop game · Game.Engine entrypoint',
+    abilityTitle: 'Ability: Standout Feature',
+    abilityText: 'Run a nostalgic platformer experience via a Java game engine with level logic and controls; provides playable recreated levels that let users explore classic Kirby-style mechanics and level design locally in a Java environment.',
+    attackTitle: 'Core Feature / Integration',
+    attackMetric: '60',
+    attackText: 'Run the Game.Engine to play recreated levels with local input, physics, and enemy logic for a classic platformer experience.',
+    weakness: 'Audio/SFX missing; requires JDK/IDE; no installer',
+    resistance: 'Self-contained Java codebase; easy to run and modify locally',
+    illustrator: 'Ryan Chen',
+    copyright: '©2026 Ryan Chen',
+    link: 'https://github.com/ryan1337c/kirby',
+  },
 ]
+
+const FRONT_LABEL = {
+  canvasWidth: 1024,
+  canvasHeight: 300,
+  planeWidth: 2.16,
+  planeHeight: 0.63,
+  position: [0, 1.39, 0.115] as const,
+  barcode: {
+    startX: 52,
+    startY: 230,
+    barCount: 42,
+    barStep: 10,
+    barHeight: 43,
+    wideBarWidth: 7,
+    narrowBarWidth: 3,
+    touchPaddingPx: 10,
+  },
+}
+
+function getBarcodeCanvasBounds(paddingPx = 0) {
+  const { startX, startY, barCount, barStep, barHeight, wideBarWidth, narrowBarWidth } =
+    FRONT_LABEL.barcode
+  let right = startX
+  for (let bar = 0; bar < barCount; bar += 1) {
+    const width = bar % 3 === 0 ? wideBarWidth : narrowBarWidth
+    right = Math.max(right, startX + bar * barStep + width)
+  }
+  return {
+    left: startX - paddingPx,
+    top: startY - paddingPx,
+    right: right + paddingPx,
+    bottom: startY + barHeight + paddingPx,
+  }
+}
+
+function canvasRectToLabelHitBox(bounds: {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}) {
+  const { canvasWidth, canvasHeight, planeWidth, planeHeight } = FRONT_LABEL
+  const pxToLocalX = (px: number) => (px / canvasWidth - 0.5) * planeWidth
+  const pxToLocalY = (py: number) => (0.5 - py / canvasHeight) * planeHeight
+  const left = pxToLocalX(bounds.left)
+  const right = pxToLocalX(bounds.right)
+  const top = pxToLocalY(bounds.top)
+  const bottom = pxToLocalY(bounds.bottom)
+  return {
+    x: (left + right) / 2,
+    y: (top + bottom) / 2,
+    width: right - left,
+    height: top - bottom,
+  }
+}
+
+const LABEL_BARCODE_HIT_BOX = canvasRectToLabelHitBox(
+  getBarcodeCanvasBounds(FRONT_LABEL.barcode.touchPaddingPx),
+)
+
+function BarcodeLinkHint({
+  link,
+  inspecting,
+  onOpen,
+}: {
+  link: string
+  inspecting: boolean
+  onOpen: (event: ThreeEvent<MouseEvent>) => void
+}) {
+  const { gl } = useThree()
+  const [hovered, setHovered] = useState(false)
+  const hoverOpacity = useRef(0)
+  const hoverMaterial = useRef<MeshBasicMaterial>(null)
+
+  const hitPosition = useMemo(
+    () =>
+      [
+        FRONT_LABEL.position[0] + LABEL_BARCODE_HIT_BOX.x,
+        FRONT_LABEL.position[1] + LABEL_BARCODE_HIT_BOX.y,
+        FRONT_LABEL.position[2] + 0.006,
+      ] as const,
+    [],
+  )
+
+  useEffect(() => {
+    if (!inspecting) {
+      hoverOpacity.current = 0
+      setHovered(false)
+      gl.domElement.style.cursor = ''
+    }
+  }, [gl, inspecting])
+
+  useFrame((_, delta) => {
+    if (!hoverMaterial.current) return
+    const target = inspecting && hovered ? 0.3 : 0
+    hoverOpacity.current += (target - hoverOpacity.current) * (1 - Math.exp(-delta / 0.2))
+    hoverMaterial.current.opacity = hoverOpacity.current
+  })
+
+  const handlePointerEnter = () => {
+    setHovered(true)
+    gl.domElement.style.cursor = 'pointer'
+  }
+
+  const handlePointerLeave = () => {
+    setHovered(false)
+    gl.domElement.style.cursor = inspecting ? 'grab' : ''
+  }
+
+  if (!inspecting || !link) return null
+
+  return (
+    <group>
+      <mesh position={[hitPosition[0], hitPosition[1], hitPosition[2] + 0.001]}>
+        <planeGeometry args={[LABEL_BARCODE_HIT_BOX.width, LABEL_BARCODE_HIT_BOX.height]} />
+        <meshBasicMaterial
+          ref={hoverMaterial}
+          transparent
+          color="#ffffff"
+          opacity={0}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh
+        position={[hitPosition[0], hitPosition[1], hitPosition[2] + 0.002]}
+        onPointerDown={(event) => event.stopPropagation()}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
+        onClick={onOpen}
+      >
+        <planeGeometry args={[LABEL_BARCODE_HIT_BOX.width, LABEL_BARCODE_HIT_BOX.height]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
 
 function finishTexture(texture: CanvasTexture) {
   texture.colorSpace = SRGBColorSpace
@@ -26,8 +263,8 @@ function finishTexture(texture: CanvasTexture) {
 
 function createFrontLabel(title: string, type: string, year: string, index: number) {
   const canvas = document.createElement('canvas')
-  canvas.width = 1024
-  canvas.height = 300
+  canvas.width = FRONT_LABEL.canvasWidth
+  canvas.height = FRONT_LABEL.canvasHeight
   const context = canvas.getContext('2d')!
 
   context.fillStyle = '#d5162f'
@@ -48,9 +285,11 @@ function createFrontLabel(title: string, type: string, year: string, index: numb
   context.fillText('GEM MINT 10', 968, 153)
 
   context.textAlign = 'left'
-  for (let bar = 0; bar < 42; bar += 1) {
-    const width = bar % 3 === 0 ? 7 : 3
-    context.fillRect(52 + bar * 10, 230, width, 43)
+  const { startX, startY, barCount, barStep, barHeight, wideBarWidth, narrowBarWidth } =
+    FRONT_LABEL.barcode
+  for (let bar = 0; bar < barCount; bar += 1) {
+    const width = bar % 3 === 0 ? wideBarWidth : narrowBarWidth
+    context.fillRect(startX + bar * barStep, startY, width, barHeight)
   }
   context.fillStyle = '#244e74'
   context.font = '900 italic 56px Arial'
@@ -77,65 +316,292 @@ function createBackLabel() {
   context.fillStyle = '#18334e'
   context.textAlign = 'center'
   context.font = '700 34px Arial'
-  context.letterSpacing = '12px'
   context.fillText('PORTFOLIO', canvas.width / 2, 220)
 
   return finishTexture(new CanvasTexture(canvas))
 }
 
-function createProjectCard(title: string, type: string, color: string, index: number) {
-  const canvas = document.createElement('canvas')
-  canvas.width = 700
-  canvas.height = 900
-  const context = canvas.getContext('2d')!
-  const gradient = context.createLinearGradient(0, 0, 700, 900)
-  gradient.addColorStop(0, color)
-  gradient.addColorStop(1, '#10283f')
-  context.fillStyle = gradient
-  context.fillRect(0, 0, 700, 900)
+function wrapTextLines(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  maxLines: number,
+): string[] {
+  const words = text.split(' ')
+  const lines: string[] = []
+  let line = ''
 
-  context.strokeStyle = 'rgba(255,255,255,.22)'
-  context.lineWidth = 2
-  for (let x = -600; x < 900; x += 44) {
-    context.beginPath()
-    context.moveTo(x, 0)
-    context.lineTo(x + 900, 900)
-    context.stroke()
+  for (const word of words) {
+    const testLine = line ? `${line} ${word}` : word
+    if (context.measureText(testLine).width > maxWidth && line) {
+      lines.push(line)
+      line = word
+      if (lines.length >= maxLines) break
+    } else {
+      line = testLine
+    }
   }
 
-  context.fillStyle = 'rgba(255,255,255,.13)'
-  context.font = '900 370px Arial'
-  context.fillText(`0${index + 1}`, 28, 460)
-  context.fillStyle = '#fff'
-  context.font = '800 54px Arial'
-  context.fillText(title.toUpperCase(), 48, 750)
-  context.fillStyle = 'rgba(255,255,255,.72)'
-  context.font = '700 27px Arial'
-  context.fillText(type.toUpperCase(), 50, 808)
-  context.fillStyle = '#fff'
-  context.fillRect(50, 840, 600, 4)
-
-  return finishTexture(new CanvasTexture(canvas))
+  if (lines.length < maxLines && line) lines.push(line)
+  return lines
 }
 
-function createProjectCardBack() {
+function drawWrappedText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines = 3,
+) {
+  const lines = wrapTextLines(context, text, maxWidth, maxLines)
+  lines.forEach((lineText, lineNumber) => {
+    context.fillText(lineText, x, y + lineNumber * lineHeight)
+  })
+}
+
+function drawImageCover(
+  context: CanvasRenderingContext2D,
+  image: CanvasImageSource,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const img = image as HTMLImageElement
+  const scale = Math.max(width / img.width, height / img.height)
+  const drawWidth = img.width * scale
+  const drawHeight = img.height * scale
+  context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight)
+}
+
+function drawImageContain(
+  context: CanvasRenderingContext2D,
+  image: CanvasImageSource,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const img = image as HTMLImageElement
+  const scale = Math.min(width / img.width, height / img.height)
+  const drawWidth = img.width * scale
+  const drawHeight = img.height * scale
+  context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight)
+}
+
+function createProjectCard(project: Project, index: number, mediaImage?: CanvasImageSource) {
+  const {
+    title,
+    type,
+    color,
+    mediaFit,
+    summary,
+    abilityTitle,
+    abilityText,
+    attackTitle,
+    attackMetric,
+    attackText,
+    weakness,
+    resistance,
+    illustrator = 'Ryan Chen',
+    copyright = '©2026 Ryan Chen',
+    level = 'LV. 1.0',
+    hp = '99 HP',
+  } = project
+
   const canvas = document.createElement('canvas')
-  canvas.width = 700
-  canvas.height = 900
+  canvas.width = 900
+  canvas.height = 1200
   const context = canvas.getContext('2d')!
 
-  context.fillStyle = '#bfc4c7'
+  // The gold outer frame remains consistent while each project receives its
+  // own collectible-card color treatment.
+  context.fillStyle = '#e8c326'
   context.fillRect(0, 0, canvas.width, canvas.height)
-  context.fillStyle = '#244e74'
-  context.font = '900 italic 180px Arial'
-  context.fillText('P', 245, 445)
-  context.fillStyle = '#d7193f'
-  context.fillText('F', 365, 445)
-  context.fillStyle = '#18334e'
+  const gradient = context.createLinearGradient(50, 30, 850, 1170)
+  gradient.addColorStop(0, color)
+  gradient.addColorStop(0.55, '#e8e1d2')
+  gradient.addColorStop(1, color)
+  context.fillStyle = gradient
+  context.fillRect(28, 28, 844, 1144)
+
+  context.fillStyle = 'rgba(255,255,255,.14)'
+  for (let dot = 0; dot < 260; dot += 1) {
+    const x = 34 + ((dot * 67) % 824)
+    const y = 34 + ((dot * 113) % 1124)
+    context.fillRect(x, y, 3, 3)
+  }
+
+  // Card header
+  const typeLabel = type.toUpperCase()
+  const typeFont = '800 21px Arial'
+  const typePaddingX = 18
+  const typeBadgeX = 54
+  const typeBadgeY = 48
+  const typeBadgeHeight = 38
+  const typeBadgeRadius = 18
+  context.font = typeFont
+  const typeBadgeWidth = context.measureText(typeLabel).width + typePaddingX * 2
+  context.fillStyle = '#e8c326'
+  context.beginPath()
+  context.roundRect(typeBadgeX, typeBadgeY, typeBadgeWidth, typeBadgeHeight, typeBadgeRadius)
+  context.fill()
+  context.fillStyle = '#172333'
+  context.fillText(typeLabel, typeBadgeX + typePaddingX, 74)
+  context.font = '900 52px Arial'
+  context.fillText(title.toUpperCase(), 56, 137)
+  context.font = '800 23px Arial'
+  context.fillText(level, 560, 127)
+  context.font = '900 34px Arial'
+  context.fillText(hp, 674, 128)
+  context.beginPath()
+  context.arc(827, 113, 29, 0, Math.PI * 2)
+  context.fillStyle = '#182f55'
+  context.fill()
+  context.fillStyle = '#fff'
   context.textAlign = 'center'
-  context.font = '700 38px Arial'
-  context.letterSpacing = '14px'
-  context.fillText('PORTFOLIO', canvas.width / 2, 530)
+  context.font = '900 18px Arial'
+  context.fillText('</>', 827, 120)
+  context.textAlign = 'left'
+
+  // Framed project media
+  context.fillStyle = '#b39116'
+  context.fillRect(54, 165, 792, 435)
+  context.fillStyle = '#f1d24b'
+  context.fillRect(65, 176, 770, 413)
+  const artwork = context.createRadialGradient(450, 340, 20, 450, 380, 460)
+  artwork.addColorStop(0, color)
+  artwork.addColorStop(1, '#0b1427')
+  context.fillStyle = artwork
+  context.fillRect(79, 190, 742, 385)
+
+  const mediaX = 79
+  const mediaY = 190
+  const mediaWidth = 742
+  const mediaHeight = 385
+
+  if (mediaImage) {
+    context.save()
+    context.beginPath()
+    context.rect(mediaX, mediaY, mediaWidth, mediaHeight)
+    context.clip()
+    if (mediaFit === 'contain') {
+      drawImageContain(context, mediaImage, mediaX, mediaY, mediaWidth, mediaHeight)
+    } else {
+      drawImageCover(context, mediaImage, mediaX, mediaY, mediaWidth, mediaHeight)
+    }
+    context.restore()
+  } else {
+    context.fillStyle = 'rgba(255,255,255,.16)'
+    context.font = '900 245px Arial'
+    context.textAlign = 'center'
+    context.fillText(`0${index + 1}`, 450, 446)
+    context.fillStyle = '#fff'
+    context.font = '900 46px Arial'
+    context.fillText('PROJECT MEDIA', 450, 505)
+    context.fillStyle = 'rgba(255,255,255,.72)'
+    context.font = '700 20px Arial'
+    context.fillText('SCREENSHOT / LOOPING GIF', 450, 542)
+    context.textAlign = 'left'
+  }
+
+  context.strokeStyle = 'rgba(255,255,255,.18)'
+  context.lineWidth = 2
+  for (let ring = 0; ring < 4; ring += 1) {
+    context.beginPath()
+    context.ellipse(450, 370, 120 + ring * 62, 48 + ring * 28, -.22, 0, Math.PI * 2)
+    context.stroke()
+  }
+  context.textAlign = 'left'
+
+  // Architecture summary bar
+  const summaryBarX = 74
+  const summaryBarY = 615
+  const summaryBarWidth = 752
+  const summaryPaddingX = 24
+  const summaryPaddingY = 8
+  const summaryLineHeight = 22
+  const summaryFontSize = 19
+  context.font = `800 ${summaryFontSize}px Arial`
+  const summaryLines = wrapTextLines(
+    context,
+    summary,
+    summaryBarWidth - summaryPaddingX * 2,
+    2,
+  )
+  const summaryBarHeight = Math.max(
+    48,
+    summaryPaddingY * 2 + (summaryLines.length - 1) * summaryLineHeight + summaryFontSize,
+  )
+  context.fillStyle = '#d6b52b'
+  context.beginPath()
+  context.roundRect(summaryBarX, summaryBarY, summaryBarWidth, summaryBarHeight, 9)
+  context.fill()
+  context.fillStyle = '#172333'
+  context.textAlign = 'center'
+  const summaryTextStartY = summaryBarY + summaryPaddingY + summaryFontSize - 4
+  summaryLines.forEach((line, lineIndex) => {
+    context.fillText(line, summaryBarX + summaryBarWidth / 2, summaryTextStartY + lineIndex * summaryLineHeight)
+  })
+  context.textAlign = 'left'
+
+  // Primary ability
+  context.fillStyle = '#b5162f'
+  context.font = '900 32px Georgia'
+  context.fillText(abilityTitle, 72, 715)
+  context.fillStyle = '#172333'
+  context.font = '800 21px Arial'
+  drawWrappedText(context, abilityText, 74, 750, 748, 26, 3)
+  context.strokeStyle = 'rgba(23,35,51,.5)'
+  context.beginPath()
+  context.moveTo(70, 823)
+  context.lineTo(830, 823)
+  context.stroke()
+
+  // Secondary attack and technology energy costs
+  const energyColors = ['#d7193f', '#6f9fbe', '#18334e']
+  energyColors.forEach((energyColor, energyIndex) => {
+    context.beginPath()
+    context.arc(92 + energyIndex * 52, 866, 19, 0, Math.PI * 2)
+    context.fillStyle = energyColor
+    context.fill()
+    context.strokeStyle = '#f5df77'
+    context.lineWidth = 4
+    context.stroke()
+  })
+  context.fillStyle = '#172333'
+  context.font = '900 31px Georgia'
+  context.fillText(attackTitle, 220, 876)
+  context.textAlign = 'right'
+  context.font = '900 40px Arial'
+  context.fillText(attackMetric, 830, 877)
+  context.textAlign = 'left'
+  context.font = '800 20px Arial'
+  drawWrappedText(context, attackText, 74, 918, 748, 25, 2)
+
+  // Footer stats
+  context.strokeStyle = 'rgba(23,35,51,.58)'
+  context.beginPath()
+  context.moveTo(70, 978)
+  context.lineTo(830, 978)
+  context.stroke()
+  context.fillStyle = '#172333'
+  context.font = '800 17px Arial'
+  context.fillText('weakness', 74, 1014)
+  context.font = '800 17px Arial'
+  context.fillText(weakness, 196, 1014)
+  context.font = '800 17px Arial'
+  context.fillText('resistance', 74, 1048)
+  context.font = '800 17px Arial'
+  context.fillText(resistance, 196, 1048)
+  context.font = '800 14px Arial'
+  context.fillText(`Illus. ${illustrator}`, 72, 1127)
+  context.textAlign = 'center'
+  context.fillText(copyright, 450, 1127)
+  context.textAlign = 'right'
+  context.fillText(`${String(index + 1).padStart(3, '0')} / 100`, 826, 1127)
 
   return finishTexture(new CanvasTexture(canvas))
 }
@@ -191,11 +657,19 @@ function PSASlab({
     [index, project],
   )
   const backLabel = useMemo(() => createBackLabel(), [])
+  const loadedProjectImage = useTexture(project.img)
   const projectCard = useMemo(
-    () => createProjectCard(project.title, project.type, project.color, index),
-    [index, project],
+    () => createProjectCard(project, index, loadedProjectImage.image as HTMLImageElement),
+    [index, project, loadedProjectImage],
   )
-  const projectCardBack = useMemo(() => createProjectCardBack(), [])
+  const loadedProjectCardBack = useTexture(pokemonCardBack)
+  const projectCardBack = useMemo(() => {
+    const texture = loadedProjectCardBack.clone()
+    texture.colorSpace = SRGBColorSpace
+    texture.anisotropy = 8
+    texture.needsUpdate = true
+    return texture
+  }, [loadedProjectCardBack])
 
   useEffect(
     () => () => {
@@ -274,6 +748,11 @@ function PSASlab({
     }
   }
 
+  const handleBarcodeClick = (event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation()
+    if (project.link) window.open(project.link, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <group
       ref={model}
@@ -302,12 +781,19 @@ function PSASlab({
       <AcrylicRail position={[-1.11, -0.32, 0.11]} size={[0.055, 2.7, 0.07]} />
       <AcrylicRail position={[1.11, -0.32, 0.11]} size={[0.055, 2.7, 0.07]} />
 
-      <mesh position={[0, 1.39, 0.115]}>
-        <planeGeometry args={[2.16, 0.63]} />
+      <mesh position={FRONT_LABEL.position}>
+        <planeGeometry args={[FRONT_LABEL.planeWidth, FRONT_LABEL.planeHeight]} />
         <meshBasicMaterial map={frontLabel} toneMapped={false} />
       </mesh>
+      {project.link ? (
+        <BarcodeLinkHint
+          link={project.link}
+          inspecting={inspecting}
+          onOpen={handleBarcodeClick}
+        />
+      ) : null}
       <mesh position={[0, -0.34, 0]} castShadow>
-        <boxGeometry args={[1.88, 2.38, 0.085]} />
+        <boxGeometry args={[1.78, 2.38, 0.085]} />
         <meshStandardMaterial attach="material-0" color="#263744" roughness={0.72} />
         <meshStandardMaterial attach="material-1" color="#263744" roughness={0.72} />
         <meshStandardMaterial attach="material-2" color="#52616c" roughness={0.68} />
@@ -348,7 +834,24 @@ function CarouselRig({
   const items = useRef<Array<Group | null>>([])
   const phase = useRef(0)
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
+    const camera = state.camera as PerspectiveCamera
+    const targetFov = inspecting ? 38 : 54
+    const cameraDamping = 1 - Math.exp(-delta * 5)
+    const nextFov = camera.fov + (targetFov - camera.fov) * cameraDamping
+    if (Math.abs(nextFov - camera.fov) > 0.001) {
+      camera.fov = nextFov
+      camera.updateProjectionMatrix()
+    }
+    // The standard crop is centered together with the 132px progress rail,
+    // so its visual midpoint sits 66px above the full canvas midpoint.
+    // Convert that pixel offset to world units to keep the slabs centered at
+    // every viewport height without changing the WebGL surface dimensions.
+    const viewportHeight = state.viewport.getCurrentViewport(camera, [0, 0, 0]).height
+    const cropCenterOffset = inspecting ? 0 : viewportHeight * 66 / state.size.height
+    const targetCameraY = 0.05 - cropCenterOffset
+    camera.position.y += (targetCameraY - camera.position.y) * cameraDamping
+
     let distance = selectedIndex - phase.current
     while (distance > projects.length / 2) distance -= projects.length
     while (distance < -projects.length / 2) distance += projects.length
@@ -359,9 +862,14 @@ function CarouselRig({
       item.visible = !inspecting || index === selectedIndex
       if (inspecting && index === selectedIndex) {
         item.position.x += (0 - item.position.x) * (1 - Math.exp(-delta * 5))
-        item.position.y += (0 - item.position.y) * (1 - Math.exp(-delta * 5))
+        item.position.y += (0.18 - item.position.y) * (1 - Math.exp(-delta * 5))
         item.position.z += (0.8 - item.position.z) * (1 - Math.exp(-delta * 5))
-        const zoomScale = item.scale.x + (1.3 - item.scale.x) * (1 - Math.exp(-delta * 5))
+        // Keep the complete slab inside the camera's vertical field of view.
+        // A taller inspection stage increases its rendered pixel size without
+        // pushing the slab's label or lower edge outside the viewport.
+        const inspectionScale = 1.18
+        const zoomScale =
+          item.scale.x + (inspectionScale - item.scale.x) * (1 - Math.exp(-delta * 5))
         item.scale.setScalar(zoomScale)
         return
       }
@@ -538,32 +1046,37 @@ export default function ProjectSlabCarousel() {
   return (
     <div className="slab-story" ref={story}>
       <div className="slab-story-sticky">
-        <div className="slab-carousel-shell">
+        <div className={`slab-carousel-shell${inspecting ? ' is-inspecting' : ''}`}>
           <div className={`slab-carousel${storyActive ? ' is-inspectable' : ''}${inspecting ? ' is-inspecting' : ''}`}>
-        <Canvas
-          camera={{ position: [0, 0.05, 8.4], fov: 38 }}
-          dpr={[1, 1.75]}
-          shadows
-          gl={{ antialias: true, alpha: true }}
-        >
-          <color attach="background" args={[new Color('#edf1f3')]} />
-          <ambientLight intensity={1.3} />
-          <directionalLight position={[-4, 6, 7]} intensity={2.4} castShadow />
-          <directionalLight position={[5, -2, 5]} intensity={1.2} color="#9ec8e0" />
-          <pointLight position={[0, 1, 5]} intensity={1.5} color="#ffffff" />
-          <CarouselRig
-            selectedIndex={selectedIndex}
-            inspecting={inspecting}
-            canInspect={storyActive}
-            onInspect={() => {
-              if (storyActive) setInspecting(true)
-            }}
-          />
-        </Canvas>
+            <div className="slab-canvas-stage">
+              <Canvas
+                camera={{ position: [0, 0.05, 8.4], fov: 54 }}
+                dpr={[1, 1.75]}
+                shadows
+                gl={{ antialias: true, alpha: true }}
+              >
+                <color attach="background" args={[new Color('#edf1f3')]} />
+                <ambientLight intensity={1.3} />
+                <directionalLight position={[-4, 6, 7]} intensity={2.4} castShadow />
+                <directionalLight position={[5, -2, 5]} intensity={1.2} color="#9ec8e0" />
+                <pointLight position={[0, 1, 5]} intensity={1.5} color="#ffffff" />
+                <CarouselRig
+                  selectedIndex={selectedIndex}
+                  inspecting={inspecting}
+                  canInspect={storyActive}
+                  onInspect={() => {
+                    if (storyActive) setInspecting(true)
+                  }}
+                />
+              </Canvas>
+            </div>
             {inspecting ? (
               <div className="inspection-controls">
                 <button type="button" onClick={() => setInspecting(false)}>← Back to story</button>
-                <span>Click and drag to rotate · Release to snap</span>
+                <div className="inspection-controls-copy">
+                  <span>Drag to rotate · Release to snap</span>
+                  <span className="inspection-controls-barcode">Tap barcode to open project ↗</span>
+                </div>
               </div>
             ) : (
               <div className="carousel-instructions">
