@@ -200,10 +200,11 @@ footer {
   align-items: center;
 }
 .slab-carousel-shell {
-  --carousel-crop-height: 65vh;
   --progress-rail-height: 132px;
+  --carousel-crop-height: min(78vh, calc(100vh - var(--progress-rail-height)));
   --carousel-crop-top: max(0px, calc((100vh - var(--carousel-crop-height) - var(--progress-rail-height)) / 2));
   --carousel-crop-bottom: calc(100vh - var(--carousel-crop-height) - var(--carousel-crop-top));
+  --project-content-gutter: calc(clamp(14px, 3vw, 52px) + clamp(24px, 8vw, 140px));
   width: 100%;
   height: 100vh;
   position: relative;
@@ -226,14 +227,15 @@ footer {
   will-change: clip-path;
   border-top: 1px solid rgba(24,51,78,.18);
   border-bottom: 1px solid rgba(24,51,78,.18);
+  background: rgba(255,255,255,.88);
+}
+.slab-carousel.is-inspecting {
+  clip-path: inset(0);
   background:
     linear-gradient(rgba(24,51,78,.045) 1px, transparent 1px),
     linear-gradient(90deg, rgba(24,51,78,.045) 1px, transparent 1px),
     radial-gradient(circle at 50% 42%, #fff 0, #eef2f4 64%, #e4e9ec 100%);
   background-size: 38px 38px, 38px 38px, 100% 100%;
-}
-.slab-carousel.is-inspecting {
-  clip-path: inset(0);
 }
 .slab-canvas-stage {
   width: 100vw;
@@ -252,11 +254,11 @@ footer {
   align-items: center;
   justify-content: space-between;
   min-height: 64px;
-  padding: 10px 22px;
+  padding: 10px var(--project-content-gutter);
   pointer-events: none;
   color: #667582;
   border-top: 1px solid rgba(24,51,78,.18);
-  background: rgba(237,241,243,.96);
+  background: rgba(255,255,255,.88);
   box-shadow: 0 -10px 24px rgba(16,40,63,.06);
   font-size: 9px;
   font-weight: 900;
@@ -587,7 +589,13 @@ footer a { color: white; font-weight: 800; }
   .progress-track { margin-inline: 20px; }
   .progress-pin small { display: none; }
   .carousel-instructions span:last-child { display: none; }
-  .carousel-instructions,
+  .slab-carousel-shell {
+    --project-content-gutter: 32px;
+  }
+  .carousel-instructions {
+    min-height: 76px;
+    gap: 14px;
+  }
   .inspection-controls {
     min-height: 76px;
     gap: 14px;

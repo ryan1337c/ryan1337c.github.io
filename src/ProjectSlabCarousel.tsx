@@ -867,7 +867,7 @@ function CarouselRig({
         // Keep the complete slab inside the camera's vertical field of view.
         // A taller inspection stage increases its rendered pixel size without
         // pushing the slab's label or lower edge outside the viewport.
-        const inspectionScale = 1.18
+        const inspectionScale = 1.32
         const zoomScale =
           item.scale.x + (inspectionScale - item.scale.x) * (1 - Math.exp(-delta * 5))
         item.scale.setScalar(zoomScale)
@@ -876,14 +876,16 @@ function CarouselRig({
 
       const angle = (index - phase.current) * (Math.PI * 2 / projects.length)
       const depth = (1 - Math.cos(angle)) * 0.5
-      const targetX = Math.sin(angle) * 3.25
+      const targetX = Math.sin(angle) * 3.65
       const targetY = -depth * 0.12
       const targetZ = -depth * 3.1
       const movement = 1 - Math.exp(-delta * 6)
       item.position.x += (targetX - item.position.x) * movement
       item.position.y += (targetY - item.position.y) * movement
       item.position.z += (targetZ - item.position.z) * movement
-      const scale = 1 - depth * 0.2
+      // Scale the complete slab group so its label typography, internal
+      // spacing, and barcode hit target retain their exact proportions.
+      const scale = 1.25 - depth * 0.2
       item.scale.setScalar(item.scale.x + (scale - item.scale.x) * movement)
       item.rotation.y = 0
     })
@@ -1055,7 +1057,7 @@ export default function ProjectSlabCarousel() {
                 shadows
                 gl={{ antialias: true, alpha: true }}
               >
-                <color attach="background" args={[new Color('#edf1f3')]} />
+                {inspecting ? <color attach="background" args={[new Color('#edf1f3')]} /> : null}
                 <ambientLight intensity={1.3} />
                 <directionalLight position={[-4, 6, 7]} intensity={2.4} castShadow />
                 <directionalLight position={[5, -2, 5]} intensity={1.2} color="#9ec8e0" />
