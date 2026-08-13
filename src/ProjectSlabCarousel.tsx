@@ -48,11 +48,11 @@ const projects: Project[] = [
     mediaFit: 'cover',
     summary: 'SwiftUI · ARKit/RealityKit · on-device Core ML (YOLO) · Supabase',
     abilityTitle: 'Ability: Standout Feature',
-    abilityText: 'Measure real-world distances, surfaces, and objects in AR using the device camera and LiDAR; provides fast, accurate 3D-anchored measurements and flattened surface exports so users can document, plan, or share physical dimensions without manual measuring tools.',
+    abilityText: 'Measure distances and surfaces in AR using camera/LiDAR; get accurate 3D-anchored measurements, real-time object detection, and flattened exports for documenting dimensions',
     attackTitle: 'Ruler, Flatten & Identify',
     attackMetric: '90+',
-    attackText: 'Use Ruler mode to place connected measurement points with snapping and live previews; flatten four-corner surfaces into rectified images and run on-device object detection to label and measure objects for export/share.',
-    weakness: 'iOS device & Apple signing; Supabase for Pro; device-dependent performance',
+    attackText: 'Ruler mode: place connected points with snapping and live preview; Flatten mode: flatten four-corner surfaces and calculate dimensions; Identity Mode: run real-time on-device object detection for labeling',
+    weakness: 'iOS device & Apple signing; device-dependent performance',
     resistance: 'On-device Core ML & LiDAR; native SwiftUI + ARKit',
     illustrator: 'Ryan Chen',
     copyright: '©2026 Ryan Chen',
@@ -67,10 +67,10 @@ const projects: Project[] = [
     mediaFit: 'contain',
     summary: 'Next.js (TypeScript) · Tailwind · Supabase · OpenAI/Claude/DeepSeek integrations',
     abilityTitle: 'Ability: Standout Feature',
-    abilityText: 'Act as an all-in-one AI copilot that routes prompts to the best model for a task (chat, code help, image generation, document analysis); delivers higher-quality, faster results and keeps conversation history so users can complete creative and productive workflows without switching tools',
-    attackTitle: 'Core Feature / Integration',
+    abilityText: 'All-in-one AI copilot that routes prompts to the best models (Claude, DeepSeek, OpenAI); delivers faster, higher-quality outputs and preserves conversation history',
+    attackTitle: 'Tool automation',
     attackMetric: '80',
-    attackText: 'Generate images, tailor resumes, and analyze uploaded documents via model APIs to produce polished assets and structured outputs.',
+    attackText: 'Generate images, quizzes, and flashcards; tailor resumes; and analyze uploaded documents via model APIs to produce polished assets and structured outputs',
     weakness: 'External API keys (OpenAI/DeepSeek); cost & latency risk',
     resistance: 'Model-agnostic routing; Supabase-backed persistence',
     illustrator: 'Ryan Chen',
@@ -86,11 +86,11 @@ const projects: Project[] = [
     mediaFit: 'contain',
     summary: 'Chrome extension · JS background/content/popup · injected CSS + webfonts',
     abilityTitle: 'Ability: Standout Feature',
-    abilityText: 'Customize website typography and highlight content in-browser by injecting fonts, sizes, spacing, and styles per site; improves readability and accessibility so users can tailor the web to their personal reading preferences instantly.',
-    attackTitle: 'Core Feature / Integration',
+    abilityText: 'Customize website typography and highlight content by injecting fonts, sizes, spacing, and styles per site; improves readability and accessibility for personalized web reading',
+    attackTitle: 'Font tuner & Highlight tool',
     attackMetric: '70+',
-    attackText: 'Inject CSS and webfonts and provide a highlight tool to instantly adjust typography and emphasize content per site.',
-    weakness: 'Chrome-only; injected CSS can break complex sites; requires permissions',
+    attackText: 'Inject CSS and webfonts and provide a highlight tool to instantly adjust typography and emphasize content per site',
+    weakness: 'Chrome-only; injected CSS can break complex sites;',
     resistance: 'Client-side only; instant local style changes; no backend',
     illustrator: 'Ryan Chen',
     copyright: '©2026 Ryan Chen',
@@ -105,10 +105,10 @@ const projects: Project[] = [
     mediaFit: 'cover',
     summary: 'Java (JDK 8+) desktop game · Game.Engine entrypoint',
     abilityTitle: 'Ability: Standout Feature',
-    abilityText: 'Run a nostalgic platformer experience via a Java game engine with level logic and controls; provides playable recreated levels that let users explore classic Kirby-style mechanics and level design locally in a Java environment.',
-    attackTitle: 'Core Feature / Integration',
+    abilityText: 'Play a recreated Kirby-style platformer built in Java; local levels showcase core mechanics, controls, and level design',
+    attackTitle: 'Game Engine',
     attackMetric: '60',
-    attackText: 'Run the Game.Engine to play recreated levels with local input, physics, and enemy logic for a classic platformer experience.',
+    attackText: 'Run the Game.Engine to play recreated levels with local input, physics, and enemy logic for a classic platformer experience',
     weakness: 'Audio/SFX missing; requires JDK/IDE; no installer',
     resistance: 'Self-contained Java codebase; easy to run and modify locally',
     illustrator: 'Ryan Chen',
@@ -555,6 +555,7 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
   context.font = '800 21px Arial'
   drawWrappedText(context, abilityText, 74, 750, 748, 26, 3)
   context.strokeStyle = 'rgba(23,35,51,.5)'
+  context.lineWidth = 4
   context.beginPath()
   context.moveTo(70, 823)
   context.lineTo(830, 823)
@@ -573,29 +574,30 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
   })
   context.fillStyle = '#172333'
   context.font = '900 31px Georgia'
-  context.fillText(attackTitle, 220, 876)
+  context.fillText(attackTitle, 240, 876)
   context.textAlign = 'right'
   context.font = '900 40px Arial'
   context.fillText(attackMetric, 830, 877)
   context.textAlign = 'left'
   context.font = '800 20px Arial'
-  drawWrappedText(context, attackText, 74, 918, 748, 25, 2)
+  drawWrappedText(context, attackText, 74, 918, 748, 25, 3)
 
   // Footer stats
   context.strokeStyle = 'rgba(23,35,51,.58)'
+  context.lineWidth = 4
   context.beginPath()
-  context.moveTo(70, 978)
-  context.lineTo(830, 978)
+  context.moveTo(70, 990)
+  context.lineTo(830, 990)
   context.stroke()
   context.fillStyle = '#172333'
   context.font = '800 17px Arial'
-  context.fillText('weakness', 74, 1014)
+  context.fillText('weakness', 74, 1026)
   context.font = '800 17px Arial'
-  context.fillText(weakness, 196, 1014)
+  context.fillText(weakness, 196, 1026)
   context.font = '800 17px Arial'
-  context.fillText('resistance', 74, 1048)
+  context.fillText('resistance', 74, 1060)
   context.font = '800 17px Arial'
-  context.fillText(resistance, 196, 1048)
+  context.fillText(resistance, 196, 1060)
   context.font = '800 14px Arial'
   context.fillText(`Illus. ${illustrator}`, 72, 1127)
   context.textAlign = 'center'
@@ -823,11 +825,13 @@ function PSASlab({
 function CarouselRig({
   selectedIndex,
   inspecting,
+  inspectionZoom,
   canInspect,
   onInspect,
 }: {
   selectedIndex: number
   inspecting: boolean
+  inspectionZoom: number
   canInspect: boolean
   onInspect: () => void
 }) {
@@ -867,7 +871,7 @@ function CarouselRig({
         // Keep the complete slab inside the camera's vertical field of view.
         // A taller inspection stage increases its rendered pixel size without
         // pushing the slab's label or lower edge outside the viewport.
-        const inspectionScale = 1.32
+        const inspectionScale = 1.32 * (1 + inspectionZoom * 0.1)
         const zoomScale =
           item.scale.x + (inspectionScale - item.scale.x) * (1 - Math.exp(-delta * 5))
         item.scale.setScalar(zoomScale)
@@ -916,6 +920,7 @@ function CarouselRig({
 export default function ProjectSlabCarousel() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [inspecting, setInspecting] = useState(false)
+  const [inspectionZoom, setInspectionZoom] = useState(0)
   const [storyActive, setStoryActive] = useState(false)
   const story = useRef<HTMLDivElement>(null)
   const progressFill = useRef<HTMLDivElement>(null)
@@ -925,6 +930,11 @@ export default function ProjectSlabCarousel() {
   useEffect(() => () => {
     if (selectionTimer.current !== null) window.clearTimeout(selectionTimer.current)
   }, [])
+
+  const closeInspection = () => {
+    setInspecting(false)
+    setInspectionZoom(0)
+  }
 
   useEffect(() => {
     let animationFrame = 0
@@ -997,7 +1007,7 @@ export default function ProjectSlabCarousel() {
         window.clearTimeout(selectionTimer.current)
         selectionTimer.current = null
       }
-      setInspecting(false)
+      closeInspection()
       window.requestAnimationFrame(() => destination.scrollIntoView({ behavior: 'smooth' }))
     }
 
@@ -1038,7 +1048,7 @@ export default function ProjectSlabCarousel() {
 
     if (selectionTimer.current !== null) window.clearTimeout(selectionTimer.current)
     if (inspecting) {
-      setInspecting(false)
+      closeInspection()
       selectionTimer.current = window.setTimeout(moveToStoryPoint, 420)
     } else {
       moveToStoryPoint()
@@ -1065,16 +1075,47 @@ export default function ProjectSlabCarousel() {
                 <CarouselRig
                   selectedIndex={selectedIndex}
                   inspecting={inspecting}
+                  inspectionZoom={inspectionZoom}
                   canInspect={storyActive}
                   onInspect={() => {
-                    if (storyActive) setInspecting(true)
+                    if (storyActive) {
+                      setInspectionZoom(0)
+                      setInspecting(true)
+                    }
                   }}
                 />
               </Canvas>
             </div>
             {inspecting ? (
               <div className="inspection-controls">
-                <button type="button" onClick={() => setInspecting(false)}>← Back to story</button>
+                <button type="button" onClick={closeInspection}>← Back to story</button>
+                <div className="inspection-zoom-controls" aria-label="Inspection zoom controls">
+                  <button
+                    type="button"
+                    className="inspection-zoom-button"
+                    aria-label="Zoom out"
+                    disabled={inspectionZoom === 0}
+                    onClick={() => setInspectionZoom((zoom) => Math.max(0, zoom - 1))}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="10.5" cy="10.5" r="6.5" />
+                      <path d="M6.8 10.5h7.4M15.3 15.3 21 21" />
+                    </svg>
+                  </button>
+                  <span aria-live="polite">{100 + inspectionZoom * 10}%</span>
+                  <button
+                    type="button"
+                    className="inspection-zoom-button"
+                    aria-label="Zoom in"
+                    disabled={inspectionZoom === 5}
+                    onClick={() => setInspectionZoom((zoom) => Math.min(5, zoom + 1))}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="10.5" cy="10.5" r="6.5" />
+                      <path d="M6.8 10.5h7.4M10.5 6.8v7.4M15.3 15.3 21 21" />
+                    </svg>
+                  </button>
+                </div>
                 <div className="inspection-controls-copy">
                   <span>Drag to rotate · Release to snap</span>
                   <span className="inspection-controls-barcode">Tap barcode to open project ↗</span>
