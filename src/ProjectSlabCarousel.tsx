@@ -23,6 +23,7 @@ type Project = {
   color: string
   img: string
   mediaFit: 'cover' | 'contain'
+  mediaZoom?: number
   summary: string
   abilityTitle: string
   abilityText: string
@@ -65,6 +66,7 @@ const projects: Project[] = [
     color: '#6f9fbe',
     img: omniImg,
     mediaFit: 'contain',
+    mediaZoom: 1.18,
     summary: 'Next.js (TypeScript) · Tailwind · Supabase · OpenAI/Claude/DeepSeek integrations',
     abilityTitle: 'Ability: Standout Feature',
     abilityText: 'All-in-one AI copilot that routes prompts to the best models (Claude, DeepSeek, OpenAI); delivers faster, higher-quality outputs and preserves conversation history',
@@ -368,9 +370,10 @@ function drawImageCover(
   y: number,
   width: number,
   height: number,
+  zoom = 1,
 ) {
   const img = image as HTMLImageElement
-  const scale = Math.max(width / img.width, height / img.height)
+  const scale = Math.max(width / img.width, height / img.height) * zoom
   const drawWidth = img.width * scale
   const drawHeight = img.height * scale
   context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight)
@@ -383,9 +386,10 @@ function drawImageContain(
   y: number,
   width: number,
   height: number,
+  zoom = 1,
 ) {
   const img = image as HTMLImageElement
-  const scale = Math.min(width / img.width, height / img.height)
+  const scale = Math.min(width / img.width, height / img.height) * zoom
   const drawWidth = img.width * scale
   const drawHeight = img.height * scale
   context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight)
@@ -397,6 +401,7 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
     type,
     color,
     mediaFit,
+    mediaZoom = 1,
     summary,
     abilityTitle,
     abilityText,
@@ -488,9 +493,9 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
     context.rect(mediaX, mediaY, mediaWidth, mediaHeight)
     context.clip()
     if (mediaFit === 'contain') {
-      drawImageContain(context, mediaImage, mediaX, mediaY, mediaWidth, mediaHeight)
+      drawImageContain(context, mediaImage, mediaX, mediaY, mediaWidth, mediaHeight, mediaZoom)
     } else {
-      drawImageCover(context, mediaImage, mediaX, mediaY, mediaWidth, mediaHeight)
+      drawImageCover(context, mediaImage, mediaX, mediaY, mediaWidth, mediaHeight, mediaZoom)
     }
     context.restore()
   } else {
@@ -507,7 +512,7 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
     context.textAlign = 'left'
   }
 
-  context.strokeStyle = 'rgba(255,255,255,.18)'
+  context.strokeStyle = 'rgba(255,255,255,.38)'
   context.lineWidth = 2
   for (let ring = 0; ring < 4; ring += 1) {
     context.beginPath()
