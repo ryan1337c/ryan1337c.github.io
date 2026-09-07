@@ -6,9 +6,11 @@ import {
   Color,
   Group,
   LinearFilter,
+  Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
   SRGBColorSpace,
+  Vector3,
 } from 'three'
 import pokemonCardBack from './assets/back_pokemon.png'
 import meiganImg from './assets/meigan.png'
@@ -178,19 +180,225 @@ const LABEL_BARCODE_HIT_BOX = canvasRectToLabelHitBox(
   getBarcodeCanvasBounds(FRONT_LABEL.barcode.touchPaddingPx),
 )
 
+// The callout tag floats to the left of the slab at barcode height, like a
+// reviewer annotation pointing at the circled barcode.
+const LABEL_BARCODE_HINT_TAG = {
+  localX: -1.72,
+  localY: FRONT_LABEL.position[1] + LABEL_BARCODE_HIT_BOX.y,
+  width: 1.15,
+  height: 1.15 / (960 / 280),
+  tilt: -0.035,
+}
+
+// The pencil circle is an oversized wobbly ellipse around the barcode hit
+// area, drawn out progressively once the inspection zoom settles. The canvas
+// keeps generous margins around the stroke so the wobble, tilt, and line
+// width can never clip at the texture edges.
+const BARCODE_PENCIL_CIRCLE = {
+  width: 1.42,
+  height: 1.42 / (1320 / 480),
+  drawStart: 0.5,
+  drawDuration: 1.25,
+}
+
+// Annotations sit in front of the acrylic rails, whose front faces reach
+// z ≈ 0.145, so the slab hardware never occludes them.
+const ANNOTATION_Z = FRONT_LABEL.position[2] + 0.04
+
+function smoothstep01(value: number) {
+  const x = Math.max(0, Math.min(1, value))
+  return x * x * (3 - 2 * x)
+}
+
+function easeOutCubic(value: number) {
+  const x = Math.max(0, Math.min(1, value))
+  return 1 - Math.pow(1 - x, 3)
+}
+
+// Deterministic pseudo-random so the hand-drawn wobble stays stable between
+// frames instead of crawling.
+function hashNoise(value: number) {
+  const x = Math.sin(value * 127.1 + 311.7) * 43758.5453
+  return x - Math.floor(x)
+}
+
+function createBarcodeHintTagTexture() {
+  const canvas = document.createElement('canvas')
+  canvas.width = 960
+  canvas.height = 280
+  const context = canvas.getContext('2d')!
+
+  const ink = '#d7193f'
+  context.fillStyle = ink
+  context.strokeStyle = ink
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  context.textBaseline = 'middle'
+
+  // Hand-style lettering with a tiny per-letter jitter so the callout reads
+  // as an annotation rather than UI chrome.
+  const label = 'CLICK TO SEE REPO'
+  const fontFamily = `'Segoe Print', 'Comic Sans MS', cursive`
+  let fontSize = 84
+  context.font = `900 ${fontSize}px ${fontFamily}`
+  while (context.measureText(label).width > canvas.width - 160 && fontSize > 40) {
+    fontSize -= 4
+    context.font = `900 ${fontSize}px ${fontFamily}`
+  }
+  const letters = [...label]
+  const widths = letters.map((letter) => context.measureText(letter).width)
+  const totalWidth = widths.reduce((sum, width) => sum + width, 0)
+  let cursor = (canvas.width - totalWidth) / 2
+  letters.forEach((letter, index) => {
+    context.save()
+    context.translate(cursor + widths[index] / 2, 106 + (hashNoise(index + 11) - 0.5) * 5)
+    context.rotate((hashNoise(index + 47) - 0.5) * 0.06)
+    context.fillText(letter, -widths[index] / 2, 0)
+    context.restore()
+    cursor += widths[index]
+  })
+
+  // Sketchy swoosh arrow pointing right toward the pencil circle.
+  const arrowSegments = 26
+  const arrowPoints: Array<[number, number]> = []
+  for (let segment = 0; segment <= arrowSegments; segment += 1) {
+    const t = segment / arrowSegments
+    arrowPoints.push([
+      150 + (canvas.width - 30 - 150) * t,
+      188 + Math.sin(t * Math.PI) * 24 + Math.sin(t * 9 + 1.2) * 2.5,
+    ])
+  }
+  for (let segment = 0; segment < arrowSegments; segment += 1) {
+    const noise = hashNoise(segment * 3 + 5)
+    context.globalAlpha = 0.7 + noise * 0.3
+    context.lineWidth = 6.5 + noise * 4
+    context.beginPath()
+    context.moveTo(arrowPoints[segment][0], arrowPoints[segment][1])
+    context.lineTo(arrowPoints[segment + 1][0], arrowPoints[segment + 1][1])
+    context.stroke()
+  }
+  const [tipX, tipY] = arrowPoints[arrowSegments]
+  const [beforeTipX, beforeTipY] = arrowPoints[arrowSegments - 1]
+  const headAngle = Math.atan2(tipY - beforeTipY, tipX - beforeTipX)
+  for (const spread of [0.45, -0.45]) {
+    context.globalAlpha = 0.9
+    context.lineWidth = 7
+    context.beginPath()
+    context.moveTo(
+      tipX - Math.cos(headAngle + spread) * 30,
+      tipY - Math.sin(headAngle + spread) * 30,
+    )
+    context.lineTo(tipX, tipY)
+    context.stroke()
+  }
+  context.globalAlpha = 1
+
+  return finishTexture(new CanvasTexture(canvas))
+}
+
+function createPencilCircle() {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1320
+  canvas.height = 480
+  const context = canvas.getContext('2d')!
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+
+  const centerX = canvas.width / 2
+  const centerY = canvas.height / 2
+  const radiusX = canvas.width / 2 - 120
+  const radiusY = canvas.height / 2 - 76
+  const tilt = -0.045
+  // Start near the upper-left and sweep past the start point so the stroke
+  // crosses over itself, like a marker circle drawn by hand.
+  const startAngle = (212 * Math.PI) / 180
+  const sweep = (392 * Math.PI) / 180
+  const segments = 120
+
+  const points: Array<[number, number]> = []
+  for (let point = 0; point <= segments; point += 1) {
+    const t = point / segments
+    const angle = startAngle + sweep * t
+    const wobble =
+      1 +
+      0.028 * Math.sin(3 * angle + 1.4) +
+      0.018 * Math.sin(7 * angle + 4.2) +
+      0.011 * Math.sin(12 * angle + 0.7)
+    const ellipseX = radiusX * wobble * Math.cos(angle)
+    const ellipseY = radiusY * (wobble + 0.015 * Math.sin(5 * angle + 2.9)) * Math.sin(angle)
+    points.push([
+      centerX + ellipseX * Math.cos(tilt) - ellipseY * Math.sin(tilt),
+      centerY + ellipseX * Math.sin(tilt) + ellipseY * Math.cos(tilt),
+    ])
+  }
+
+  const texture = finishTexture(new CanvasTexture(canvas))
+  let lastDrawn = -1
+
+  const strokeSegment = (index: number, fraction: number, pass: 0 | 1) => {
+    const [x1, y1] = points[index]
+    const [x2, y2] = points[index + 1]
+    const noise = hashNoise(index * 2 + pass * 131)
+    const offsetX = pass === 0 ? 0 : 1.6
+    const offsetY = pass === 0 ? 0 : 1.1
+    context.strokeStyle = `rgba(215, 25, 63, ${pass === 0 ? 0.6 + 0.4 * noise : 0.16})`
+    context.lineWidth = pass === 0 ? 8 + 7 * noise : 4.5
+    context.beginPath()
+    context.moveTo(x1 + offsetX, y1 + offsetY)
+    context.lineTo(
+      x1 + (x2 - x1) * fraction + offsetX,
+      y1 + (y2 - y1) * fraction + offsetY,
+    )
+    context.stroke()
+  }
+
+  // Redraws the stroke up to `progress` (0..1). Called every frame while the
+  // inspection hint runs; skips work when the visible length is unchanged.
+  const draw = (progress: number) => {
+    const clamped = Math.max(0, Math.min(1, progress))
+    const exact = clamped * segments
+    if (Math.abs(exact - lastDrawn) < 0.25) return
+    lastDrawn = exact
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    const fullSegments = Math.min(segments, Math.floor(exact))
+    const fraction = exact - fullSegments
+    for (const pass of [0, 1] as const) {
+      for (let segment = 0; segment < fullSegments; segment += 1) {
+        strokeSegment(segment, 1, pass)
+      }
+      if (fraction > 0.001 && fullSegments < segments) {
+        strokeSegment(fullSegments, fraction, pass)
+      }
+    }
+    texture.needsUpdate = true
+  }
+
+  return { texture, draw }
+}
+
 function BarcodeLinkHint({
   link,
   inspecting,
   onOpen,
+  modelRef,
 }: {
   link: string
   inspecting: boolean
   onOpen: (event: ThreeEvent<MouseEvent>) => void
+  modelRef: { current: Group | null }
 }) {
   const { gl } = useThree()
   const [hovered, setHovered] = useState(false)
   const hoverOpacity = useRef(0)
   const hoverMaterial = useRef<MeshBasicMaterial>(null)
+  const hintTime = useRef(0)
+  const tagOpacity = useRef(0)
+  const tagMaterial = useRef<MeshBasicMaterial>(null)
+  const tagMesh = useRef<Mesh>(null)
+  const circleMaterial = useRef<MeshBasicMaterial>(null)
+  const worldScaleScratch = useRef(new Vector3())
+  const tagTexture = useMemo(() => createBarcodeHintTagTexture(), [])
+  const pencilCircle = useMemo(() => createPencilCircle(), [])
 
   const hitPosition = useMemo(
     () =>
@@ -202,24 +410,88 @@ function BarcodeLinkHint({
     [],
   )
 
+  const tagPosition = useMemo(
+    () =>
+      [
+        LABEL_BARCODE_HINT_TAG.localX,
+        LABEL_BARCODE_HINT_TAG.localY,
+        ANNOTATION_Z,
+      ] as const,
+    [],
+  )
+
+  useEffect(
+    () => () => {
+      tagTexture.dispose()
+      pencilCircle.texture.dispose()
+    },
+    [tagTexture, pencilCircle],
+  )
+
   useEffect(() => {
-    if (!inspecting) {
-      hoverOpacity.current = 0
-      setHovered(false)
-      gl.domElement.style.cursor = ''
+    if (inspecting) {
+      // Restart the callout every time a slab is opened for inspection.
+      hintTime.current = 0
+      tagOpacity.current = 0
+      return
     }
+    hoverOpacity.current = 0
+    setHovered(false)
+    gl.domElement.style.cursor = ''
   }, [gl, inspecting])
 
-  useFrame((_, delta) => {
-    if (!hoverMaterial.current) return
-    const target = inspecting && hovered ? 0.3 : 0
-    hoverOpacity.current += (target - hoverOpacity.current) * (1 - Math.exp(-delta / 0.2))
-    hoverMaterial.current.opacity = hoverOpacity.current
+  useFrame((state, delta) => {
+    if (inspecting) hintTime.current += delta
+    const elapsed = hintTime.current
+
+    if (hoverMaterial.current) {
+      const target = inspecting && hovered ? 0.3 : 0
+      hoverOpacity.current += (target - hoverOpacity.current) * (1 - Math.exp(-delta / 0.2))
+      hoverMaterial.current.opacity = hoverOpacity.current
+    }
+
+    // The pencil circle draws itself around the barcode shortly after the
+    // inspection zoom settles, holds, then fades out together with the tag.
+    // Hovering the barcode restarts the clock so the whole sequence replays.
+    const fadeOut = 1 - smoothstep01((elapsed - 3.8) / 0.6)
+    if (inspecting) {
+      const progress = easeOutCubic(
+        (elapsed - BARCODE_PENCIL_CIRCLE.drawStart) / BARCODE_PENCIL_CIRCLE.drawDuration,
+      )
+      pencilCircle.draw(progress)
+    }
+    if (circleMaterial.current) {
+      circleMaterial.current.opacity = inspecting ? fadeOut : 0
+    }
+
+    // The tag floats to the left of the slab: it fades in once the circle
+    // starts, holds for a few seconds, then fades out with the circle. It
+    // only appears while it fits in the viewport and the slab's front face
+    // is toward the camera.
+    if (tagMaterial.current && tagMesh.current) {
+      const camera = state.camera as PerspectiveCamera
+      const worldScale = tagMesh.current.getWorldScale(worldScaleScratch.current).x || 1
+      const halfHeight = Math.tan((camera.fov * Math.PI) / 360) * (camera.position.z - 0.8)
+      const halfWidth = halfHeight * (state.size.width / state.size.height)
+      const tagHalfWidth = (LABEL_BARCODE_HINT_TAG.width * worldScale) / 2
+      const fits =
+        Math.abs(LABEL_BARCODE_HINT_TAG.localX * worldScale) + tagHalfWidth + 0.12 <= halfWidth
+      const facing = smoothstep01((Math.cos(modelRef.current?.rotation.y ?? 0) - 0.4) / 0.2)
+      const intro = smoothstep01((elapsed - 0.75) / 0.35) * fadeOut
+      const target = inspecting && fits ? intro * facing : 0
+      tagOpacity.current += (target - tagOpacity.current) * (1 - Math.exp(-delta / 0.1))
+      tagMaterial.current.opacity = tagOpacity.current
+      tagMesh.current.position.y =
+        tagPosition[1] + Math.sin(elapsed * 2.6) * 0.012 * tagOpacity.current
+    }
   })
 
   const handlePointerEnter = () => {
     setHovered(true)
     gl.domElement.style.cursor = 'pointer'
+    // Restart the annotation clock so the circle redraws and the tag
+    // reappears with the full animation sequence.
+    hintTime.current = 0
   }
 
   const handlePointerLeave = () => {
@@ -250,6 +522,39 @@ function BarcodeLinkHint({
       >
         <planeGeometry args={[LABEL_BARCODE_HIT_BOX.width, LABEL_BARCODE_HIT_BOX.height]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      {/* Decorative annotation layers — excluded from raycasting so they
+          never interfere with the barcode hit target or slab drag gestures,
+          and floated in front of the acrylic rails so nothing occludes them. */}
+      <mesh
+        position={[hitPosition[0], hitPosition[1], ANNOTATION_Z]}
+        raycast={() => null}
+      >
+        <planeGeometry args={[BARCODE_PENCIL_CIRCLE.width, BARCODE_PENCIL_CIRCLE.height]} />
+        <meshBasicMaterial
+          ref={circleMaterial}
+          map={pencilCircle.texture}
+          transparent
+          opacity={0}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh
+        ref={tagMesh}
+        position={tagPosition}
+        rotation={[0, 0, LABEL_BARCODE_HINT_TAG.tilt]}
+        raycast={() => null}
+      >
+        <planeGeometry args={[LABEL_BARCODE_HINT_TAG.width, LABEL_BARCODE_HINT_TAG.height]} />
+        <meshBasicMaterial
+          ref={tagMaterial}
+          map={tagTexture}
+          transparent
+          opacity={0}
+          depthWrite={false}
+          toneMapped={false}
+        />
       </mesh>
     </group>
   )
@@ -797,6 +1102,7 @@ function PSASlab({
           link={project.link}
           inspecting={inspecting}
           onOpen={handleBarcodeClick}
+          modelRef={model}
         />
       ) : null}
       <mesh position={[0, -0.34, 0]} castShadow>
