@@ -181,7 +181,9 @@ const LABEL_BARCODE_HIT_BOX = canvasRectToLabelHitBox(
 )
 
 // The callout tag floats to the left of the slab at barcode height, like a
-// reviewer annotation pointing at the circled barcode.
+// reviewer annotation pointing at the circled barcode. localX is only the
+// initial mount position — every frame the tag is re-anchored to the slab's
+// left edge so it stays in view at every inspection zoom level.
 const LABEL_BARCODE_HINT_TAG = {
   localX: -1.72,
   localY: FRONT_LABEL.position[1] + LABEL_BARCODE_HIT_BOX.y,
@@ -465,17 +467,31 @@ function BarcodeLinkHint({
     }
 
     // The tag floats to the left of the slab: it fades in once the circle
-    // starts, holds for a few seconds, then fades out with the circle. It
-    // only appears while it fits in the viewport and the slab's front face
-    // is toward the camera.
+    // starts, holds for a few seconds, then fades out with the circle. Its
+    // anchor is re-computed every frame so it hugs the slab's left edge with
+    // a constant gap instead of drifting outward as the inspection zoom
+    // scales the slab. When the space beside the slab runs out the tag
+    // shrinks, and it only disappears entirely when there is genuinely no
+    // room (narrow portrait layouts, where the bottom hint copy covers it).
     if (tagMaterial.current && tagMesh.current) {
       const camera = state.camera as PerspectiveCamera
-      const worldScale = tagMesh.current.getWorldScale(worldScaleScratch.current).x || 1
+      // Read the parent's world scale — the tag's own counter-scale below
+      // must not feed back into this measurement.
+      const worldScale = tagMesh.current.parent
+        ? tagMesh.current.parent.getWorldScale(worldScaleScratch.current).x || 1
+        : 1
       const halfHeight = Math.tan((camera.fov * Math.PI) / 360) * (camera.position.z - 0.8)
       const halfWidth = halfHeight * (state.size.width / state.size.height)
-      const tagHalfWidth = (LABEL_BARCODE_HINT_TAG.width * worldScale) / 2
-      const fits =
-        Math.abs(LABEL_BARCODE_HINT_TAG.localX * worldScale) + tagHalfWidth + 0.12 <= halfWidth
+      const slabHalfWidth = 1.25 * worldScale
+      const gap = 0.08
+      const available = halfWidth - slabHalfWidth - gap - 0.1
+      const naturalWidth = LABEL_BARCODE_HINT_TAG.width * worldScale
+      const tagWorldWidth = Math.max(0, Math.min(naturalWidth, available))
+      const fits = tagWorldWidth / LABEL_BARCODE_HINT_TAG.width >= 0.6
+      tagMesh.current.scale.setScalar(
+        Math.max(0.0001, naturalWidth > 0 ? tagWorldWidth / naturalWidth : 0),
+      )
+      tagMesh.current.position.x = -(slabHalfWidth + gap + tagWorldWidth / 2) / worldScale
       const facing = smoothstep01((Math.cos(modelRef.current?.rotation.y ?? 0) - 0.4) / 0.2)
       const intro = smoothstep01((elapsed - 0.75) / 0.35) * fadeOut
       const target = inspecting && fits ? intro * facing : 0
@@ -1133,16 +1149,29 @@ function PSASlab({
   )
 }
 
+const SLAB_HALF_HEIGHT = 3.65 / 2
+const INSPECTION_SLAB_Y = 0.18
+const INSPECTION_SLAB_Z = 0.8
+const INSPECTION_CAMERA_Y = 0.05
+// Half the visible world height at the slab's depth while inspecting
+// (fov 38, camera z 8.4).
+const INSPECTION_VIEW_HALF_HEIGHT = Math.tan((38 * Math.PI) / 360) * (8.4 - INSPECTION_SLAB_Z)
+// The slab rests slightly above the camera's vertical center, so the pan
+// limits that align the slab's edges with the viewport are asymmetric.
+const INSPECTION_CENTER_BIAS = INSPECTION_SLAB_Y - INSPECTION_CAMERA_Y
+
 function CarouselRig({
   selectedIndex,
   inspecting,
   inspectionZoom,
+  inspectionPan,
   canInspect,
   onInspect,
 }: {
   selectedIndex: number
   inspecting: boolean
   inspectionZoom: number
+  inspectionPan: { current: number }
   canInspect: boolean
   onInspect: () => void
 }) {
@@ -1177,8 +1206,7 @@ function CarouselRig({
       item.visible = !inspecting || index === selectedIndex
       if (inspecting && index === selectedIndex) {
         item.position.x += (0 - item.position.x) * (1 - Math.exp(-delta * 5))
-        item.position.y += (0.18 - item.position.y) * (1 - Math.exp(-delta * 5))
-        item.position.z += (0.8 - item.position.z) * (1 - Math.exp(-delta * 5))
+        item.position.z += (INSPECTION_SLAB_Z - item.position.z) * (1 - Math.exp(-delta * 5))
         // Keep the complete slab inside the camera's vertical field of view.
         // A taller inspection stage increases its rendered pixel size without
         // pushing the slab's label or lower edge outside the viewport.
@@ -1186,6 +1214,19 @@ function CarouselRig({
         const zoomScale =
           item.scale.x + (inspectionScale - item.scale.x) * (1 - Math.exp(-delta * 5))
         item.scale.setScalar(zoomScale)
+        // Vertical pan while zoomed past 100%: clamp the pan target so the
+        // slab's top and bottom edges can never scroll past the viewport,
+        // then ease the slab toward it. Collapses to zero when the slab fits.
+        const viewHalfHeight =
+          Math.tan((camera.fov * Math.PI) / 360) * (camera.position.z - item.position.z)
+        const overflow = Math.max(0, SLAB_HALF_HEIGHT * zoomScale - viewHalfHeight)
+        const centerBias = INSPECTION_SLAB_Y - camera.position.y
+        const panMin = overflow > 0 ? Math.min(0, -overflow - centerBias) : 0
+        const panMax = overflow > 0 ? Math.max(0, overflow - centerBias) : 0
+        inspectionPan.current = Math.max(panMin, Math.min(panMax, inspectionPan.current))
+        item.position.y +=
+          (INSPECTION_SLAB_Y + inspectionPan.current - item.position.y) *
+          (1 - Math.exp(-delta * 5))
         return
       }
 
@@ -1233,6 +1274,7 @@ export default function ProjectSlabCarousel() {
   const [inspecting, setInspecting] = useState(false)
   const [inspectionZoom, setInspectionZoom] = useState(0)
   const [storyActive, setStoryActive] = useState(false)
+  const inspectionPan = useRef(0)
   const story = useRef<HTMLDivElement>(null)
   const progressFill = useRef<HTMLDivElement>(null)
   const progressRunner = useRef<HTMLDivElement>(null)
@@ -1245,6 +1287,7 @@ export default function ProjectSlabCarousel() {
   const closeInspection = () => {
     setInspecting(false)
     setInspectionZoom(0)
+    inspectionPan.current = 0
   }
 
   useEffect(() => {
@@ -1287,6 +1330,28 @@ export default function ProjectSlabCarousel() {
   useEffect(() => {
     if (!inspecting) return
     const lockedScrollPosition = window.scrollY
+
+    // While zoomed past 100%, wheel/trackpad and arrow keys pan the slab
+    // vertically instead of scrolling the page. The pan target is clamped so
+    // the slab's top and bottom edges can never scroll past the viewport.
+    const applyPanDelta = (deltaPx: number) => {
+      const scale = 1.32 * (1 + inspectionZoom * 0.1)
+      const overflow = Math.max(0, SLAB_HALF_HEIGHT * scale - INSPECTION_VIEW_HALF_HEIGHT)
+      if (overflow <= 0) return
+      const panMin = Math.min(0, -overflow - INSPECTION_CENTER_BIAS)
+      const panMax = Math.max(0, overflow - INSPECTION_CENTER_BIAS)
+      const worldPerPixel = (INSPECTION_VIEW_HALF_HEIGHT * 2) / window.innerHeight
+      inspectionPan.current = Math.max(
+        panMin,
+        Math.min(panMax, inspectionPan.current + deltaPx * worldPerPixel),
+      )
+    }
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault()
+      const unit = event.deltaMode === 1 ? 16 : 1
+      applyPanDelta(event.deltaY * unit)
+    }
     const preventScroll = (event: Event) => event.preventDefault()
     const preventScrollKeys = (event: KeyboardEvent) => {
       if ([
@@ -1300,6 +1365,10 @@ export default function ProjectSlabCarousel() {
       ].includes(event.key)) {
         event.preventDefault()
       }
+      if (event.key === 'ArrowDown') applyPanDelta(120)
+      else if (event.key === 'ArrowUp') applyPanDelta(-120)
+      else if (event.key === 'PageDown') applyPanDelta(window.innerHeight * 0.8)
+      else if (event.key === 'PageUp') applyPanDelta(-window.innerHeight * 0.8)
     }
     const holdScrollPosition = () => {
       if (Math.abs(window.scrollY - lockedScrollPosition) > 1) {
@@ -1323,18 +1392,18 @@ export default function ProjectSlabCarousel() {
     }
 
     document.addEventListener('click', allowHeaderNavigation, true)
-    window.addEventListener('wheel', preventScroll, { passive: false })
+    window.addEventListener('wheel', handleWheel, { passive: false })
     window.addEventListener('touchmove', preventScroll, { passive: false })
     window.addEventListener('keydown', preventScrollKeys)
     window.addEventListener('scroll', holdScrollPosition, { passive: true })
     return () => {
       document.removeEventListener('click', allowHeaderNavigation, true)
-      window.removeEventListener('wheel', preventScroll)
+      window.removeEventListener('wheel', handleWheel)
       window.removeEventListener('touchmove', preventScroll)
       window.removeEventListener('keydown', preventScrollKeys)
       window.removeEventListener('scroll', holdScrollPosition)
     }
-  }, [inspecting])
+  }, [inspecting, inspectionZoom])
 
   const selectStoryPoint = (index: number) => {
     const moveToStoryPoint = () => {
@@ -1387,10 +1456,12 @@ export default function ProjectSlabCarousel() {
                   selectedIndex={selectedIndex}
                   inspecting={inspecting}
                   inspectionZoom={inspectionZoom}
+                  inspectionPan={inspectionPan}
                   canInspect={storyActive}
                   onInspect={() => {
                     if (storyActive) {
                       setInspectionZoom(0)
+                      inspectionPan.current = 0
                       setInspecting(true)
                     }
                   }}
