@@ -1496,8 +1496,9 @@ export default function ProjectSlabCarousel() {
               </div>
             ) : (
               <div className="carousel-instructions">
-                <span>{storyActive ? 'Scroll to explore the collection' : 'Continue scrolling to begin'}</span>
-                <span>{storyActive ? 'Click the focused slab to inspect' : 'Inspection unlocks inside the story'}</span>
+                <span className={`instructions-cta${storyActive ? ' is-live' : ''}`}>
+                  {storyActive ? 'Click the focused slab to inspect' : 'Inspection unlocks inside the story'}
+                </span>
               </div>
             )}
           </div>
@@ -1505,7 +1506,6 @@ export default function ProjectSlabCarousel() {
           <div className="carousel-progress" aria-label="Carousel story progress">
             <div className="progress-heading">
               <span>Scroll story · Or select a chapter</span>
-              <strong>{String(selectedIndex + 1).padStart(2, '0')} / 04</strong>
             </div>
             <div className="progress-track">
               <div className="progress-fill" ref={progressFill} />
@@ -1521,7 +1521,7 @@ export default function ProjectSlabCarousel() {
                   style={{ left: `${index / (projects.length - 1) * 100}%` }}
                 >
                   <i /><i /><i /><i />
-                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <span />
                   <small>{project.title}</small>
                 </button>
               ))}

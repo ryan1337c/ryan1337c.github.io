@@ -252,7 +252,7 @@ footer {
   bottom: var(--carousel-crop-bottom);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   min-height: 64px;
   padding: 10px var(--project-content-gutter);
   pointer-events: none;
@@ -266,15 +266,20 @@ footer {
   text-transform: uppercase;
   transition: bottom .65s cubic-bezier(.22, 1, .36, 1);
 }
-.carousel-instructions span:first-child::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 9px;
-  border-radius: 50%;
+.carousel-instructions .instructions-cta {
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 10px;
+  transition: color .35s, background .35s, box-shadow .35s;
+}
+.carousel-instructions .instructions-cta.is-live {
+  color: white;
   background: var(--red);
-  box-shadow: 0 0 0 4px rgba(215,25,63,.12);
+  animation: instructions-cta-pulse 1.8s ease-in-out infinite;
+}
+@keyframes instructions-cta-pulse {
+  0%, 100% { box-shadow: 0 6px 16px rgba(215,25,63,.35); transform: scale(1); }
+  50% { box-shadow: 0 8px 28px rgba(215,25,63,.6); transform: scale(1.05); }
 }
 .inspection-controls {
   position: absolute;
@@ -390,11 +395,6 @@ footer {
   font-weight: 900;
 }
 .progress-heading span { color: #9eafbd; }
-.progress-heading strong {
-  color: var(--blue);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
 .progress-track {
   height: 3px;
   margin: 0 34px;
@@ -629,7 +629,6 @@ footer a { color: white; font-weight: 800; }
   }
   .progress-track { margin-inline: 20px; }
   .progress-pin small { display: none; }
-  .carousel-instructions span:last-child { display: none; }
   .slab-carousel-shell {
     --project-content-gutter: 32px;
   }
