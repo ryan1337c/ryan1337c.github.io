@@ -833,15 +833,6 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
     context.textAlign = 'left'
   }
 
-  context.strokeStyle = 'rgba(255,255,255,.38)'
-  context.lineWidth = 2
-  for (let ring = 0; ring < 4; ring += 1) {
-    context.beginPath()
-    context.ellipse(450, 370, 120 + ring * 62, 48 + ring * 28, -.22, 0, Math.PI * 2)
-    context.stroke()
-  }
-  context.textAlign = 'left'
-
   // Architecture summary bar
   const summaryBarX = 74
   const summaryBarY = 615
