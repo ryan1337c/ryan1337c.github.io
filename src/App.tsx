@@ -1,7 +1,7 @@
 import emailjs from '@emailjs/browser'
 import { useState, type FormEvent } from 'react'
 import './App.css'
-import portraitImage from './assets/dragonite_git.jpg'
+import portraitImage from './assets/Grokified.png'
 import ProjectSlabCarousel from './ProjectSlabCarousel'
 import WavyRibbon from './WavyRibbon'
 
