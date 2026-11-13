@@ -68,9 +68,6 @@ function App() {
           <a href="#skills" onClick={() => setIsMenuOpen(false)}>Skills</a>
           <a href="#contact" onClick={() => setIsMenuOpen(false)}>Contact</a>
         </nav>
-        <a className="header-cta" href="#contact">
-          Let's talk <ArrowIcon />
-        </a>
         <button
           className={`menu-toggle${isMenuOpen ? ' menu-toggle--open' : ''}`}
           type="button"
@@ -90,7 +87,7 @@ function App() {
           <p className="eyebrow"><span /> Available for opportunities</p>
           <h1>My<br /><em>Portfolio</em></h1>
           <p className="hero-bio">
-            Hi, I'm <strong>Ryan Chen</strong> — a software engineering who enjoys building fun and useful
+            Hi, I'm <strong>Ryan Chen</strong> — a software engineer who enjoys building fun and useful
             products that people might enjoy using.
           </p>
           <div className="hero-actions">

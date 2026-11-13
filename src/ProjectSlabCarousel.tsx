@@ -12,11 +12,48 @@ import {
   SRGBColorSpace,
   Vector3,
 } from 'three'
-import pokemonCardBack from './assets/back_pokemon.png'
+import cardBack from './assets/back.png'
 import meiganImg from './assets/meigan.png'
 import omniImg from './assets/omni.png'
 import fontimizeImg from './assets/fontimize.png'
 import kirbyImg from './assets/kirby.webp'
+
+
+/** Self-hosted Geist face loaded in main.tsx; quoted for canvas font strings. */
+const SITE_FONT = '"Geist Variable"'
+
+let geistReadyPromise: Promise<void> | null = null
+
+function ensureGeistLoaded() {
+  if (!geistReadyPromise) {
+    const specs = [
+      `700 48px ${SITE_FONT}`,
+      `800 52px ${SITE_FONT}`,
+      `900 52px ${SITE_FONT}`,
+      `900 italic 96px ${SITE_FONT}`,
+    ]
+    geistReadyPromise = Promise.all(specs.map((spec) => document.fonts.load(spec)))
+      .then(() => undefined)
+      .catch(() => undefined)
+  }
+  return geistReadyPromise
+}
+
+/** True once the variable Geist face is available for canvas measurement/drawing. */
+function useGeistReady() {
+  const [ready, setReady] = useState(() => document.fonts.check(`900 48px ${SITE_FONT}`))
+  useEffect(() => {
+    if (ready) return
+    let cancelled = false
+    void ensureGeistLoaded().then(() => {
+      if (!cancelled) setReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [ready])
+  return ready
+}
 
 type Project = {
   title: string
@@ -230,7 +267,7 @@ function createBarcodeHintTagTexture() {
   canvas.height = 280
   const context = canvas.getContext('2d')!
 
-  const ink = '#d7193f'
+  const ink = '#4d5c3c'
   context.fillStyle = ink
   context.strokeStyle = ink
   context.lineCap = 'round'
@@ -343,7 +380,7 @@ function createPencilCircle() {
     const noise = hashNoise(index * 2 + pass * 131)
     const offsetX = pass === 0 ? 0 : 1.6
     const offsetY = pass === 0 ? 0 : 1.1
-    context.strokeStyle = `rgba(215, 25, 63, ${pass === 0 ? 0.6 + 0.4 * noise : 0.16})`
+    context.strokeStyle = `rgba(77, 92, 60, ${pass === 0 ? 0.6 + 0.4 * noise : 0.16})`
     context.lineWidth = pass === 0 ? 8 + 7 * noise : 4.5
     context.beginPath()
     context.moveTo(x1 + offsetX, y1 + offsetY)
@@ -590,21 +627,21 @@ function createFrontLabel(title: string, type: string, year: string, index: numb
   canvas.height = FRONT_LABEL.canvasHeight
   const context = canvas.getContext('2d')!
 
-  context.fillStyle = '#d5162f'
+  context.fillStyle = '#4d5c3c'
   context.fillRect(0, 0, canvas.width, canvas.height)
-  context.fillStyle = '#f7f7f3'
+  context.fillStyle = '#f5f3ed'
   context.fillRect(24, 24, canvas.width - 48, canvas.height - 48)
-  context.fillStyle = '#111820'
-  context.font = '700 48px Arial'
+  context.fillStyle = '#252521'
+  context.font = '700 48px "Geist Variable"'
   context.fillText(`${year}  —  ${type.toUpperCase()}`, 52, 88)
-  context.font = '800 46px Arial'
+  context.font = '800 46px "Geist Variable"'
   context.fillText(title.toUpperCase(), 52, 153)
-  context.font = '700 32px Arial'
+  context.font = '700 32px "Geist Variable"'
   context.fillText('PERSONAL PROJECT', 52, 210)
   context.textAlign = 'right'
-  context.font = '800 48px Arial'
+  context.font = '800 48px "Geist Variable"'
   context.fillText(`#00${index + 1}`, 968, 88)
-  context.font = '700 38px Arial'
+  context.font = '700 38px "Geist Variable"'
   context.fillText('GEM MINT 10', 968, 153)
 
   context.textAlign = 'left'
@@ -614,10 +651,10 @@ function createFrontLabel(title: string, type: string, year: string, index: numb
     const width = bar % 3 === 0 ? wideBarWidth : narrowBarWidth
     context.fillRect(startX + bar * barStep, startY, width, barHeight)
   }
-  context.fillStyle = '#244e74'
-  context.font = '900 italic 56px Arial'
+  context.fillStyle = '#252521'
+  context.font = '900 italic 56px "Geist Variable"'
   context.fillText('P', 520, 267)
-  context.fillStyle = '#d7193f'
+  context.fillStyle = '#4d5c3c'
   context.fillText('F', 560, 267)
 
   return finishTexture(new CanvasTexture(canvas))
@@ -629,16 +666,16 @@ function createBackLabel() {
   canvas.height = 300
   const context = canvas.getContext('2d')!
 
-  context.fillStyle = '#bfc4c7'
+  context.fillStyle = '#deddd4'
   context.fillRect(0, 0, canvas.width, canvas.height)
-  context.fillStyle = '#244e74'
-  context.font = '900 italic 96px Arial'
+  context.fillStyle = '#252521'
+  context.font = '900 italic 96px "Geist Variable"'
   context.fillText('P', 427, 142)
-  context.fillStyle = '#d7193f'
+  context.fillStyle = '#4d5c3c'
   context.fillText('F', 493, 142)
-  context.fillStyle = '#18334e'
+  context.fillStyle = '#252521'
   context.textAlign = 'center'
-  context.font = '700 34px Arial'
+  context.font = '700 34px "Geist Variable"'
   context.fillText('PORTFOLIO', canvas.width / 2, 220)
 
   return finishTexture(new CanvasTexture(canvas))
@@ -762,7 +799,7 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
 
   // Card header
   const typeLabel = type.toUpperCase()
-  const typeFont = '800 21px Arial'
+  const typeFont = '800 21px "Geist Variable"'
   const typePaddingX = 18
   const typeBadgeX = 54
   const typeBadgeY = 48
@@ -776,11 +813,11 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
   context.fill()
   context.fillStyle = '#172333'
   context.fillText(typeLabel, typeBadgeX + typePaddingX, 74)
-  context.font = '900 52px Arial'
+  context.font = '900 52px "Geist Variable"'
   context.fillText(title.toUpperCase(), 56, 137)
-  context.font = '800 23px Arial'
+  context.font = '800 23px "Geist Variable"'
   context.fillText(level, 560, 127)
-  context.font = '900 34px Arial'
+  context.font = '900 34px "Geist Variable"'
   context.fillText(hp, 674, 128)
   context.beginPath()
   context.arc(827, 113, 29, 0, Math.PI * 2)
@@ -788,7 +825,7 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
   context.fill()
   context.fillStyle = '#fff'
   context.textAlign = 'center'
-  context.font = '900 18px Arial'
+  context.font = '900 18px "Geist Variable"'
   context.fillText('</>', 827, 120)
   context.textAlign = 'left'
 
@@ -821,14 +858,14 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
     context.restore()
   } else {
     context.fillStyle = 'rgba(255,255,255,.16)'
-    context.font = '900 245px Arial'
+    context.font = '900 245px "Geist Variable"'
     context.textAlign = 'center'
     context.fillText(`0${index + 1}`, 450, 446)
     context.fillStyle = '#fff'
-    context.font = '900 46px Arial'
+    context.font = '900 46px "Geist Variable"'
     context.fillText('PROJECT MEDIA', 450, 505)
     context.fillStyle = 'rgba(255,255,255,.72)'
-    context.font = '700 20px Arial'
+    context.font = '700 20px "Geist Variable"'
     context.fillText('SCREENSHOT / LOOPING GIF', 450, 542)
     context.textAlign = 'left'
   }
@@ -841,7 +878,7 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
   const summaryPaddingY = 8
   const summaryLineHeight = 22
   const summaryFontSize = 19
-  context.font = `800 ${summaryFontSize}px Arial`
+  context.font = `800 ${summaryFontSize}px "Geist Variable"`
   const summaryLines = wrapTextLines(
     context,
     summary,
@@ -869,7 +906,7 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
   context.font = '900 32px Georgia'
   context.fillText(abilityTitle, 72, 715)
   context.fillStyle = '#172333'
-  context.font = '800 21px Arial'
+  context.font = '800 21px "Geist Variable"'
   drawWrappedText(context, abilityText, 74, 750, 748, 26, 3)
   context.strokeStyle = 'rgba(23,35,51,.5)'
   context.lineWidth = 4
@@ -893,10 +930,10 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
   context.font = '900 31px Georgia'
   context.fillText(attackTitle, 240, 876)
   context.textAlign = 'right'
-  context.font = '900 40px Arial'
+  context.font = '900 40px "Geist Variable"'
   context.fillText(attackMetric, 830, 877)
   context.textAlign = 'left'
-  context.font = '800 20px Arial'
+  context.font = '800 20px "Geist Variable"'
   drawWrappedText(context, attackText, 74, 918, 748, 25, 3)
 
   // Footer stats
@@ -907,15 +944,15 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
   context.lineTo(830, 990)
   context.stroke()
   context.fillStyle = '#172333'
-  context.font = '800 17px Arial'
+  context.font = '800 17px "Geist Variable"'
   context.fillText('weakness', 74, 1026)
-  context.font = '800 17px Arial'
+  context.font = '800 17px "Geist Variable"'
   context.fillText(weakness, 196, 1026)
-  context.font = '800 17px Arial'
+  context.font = '800 17px "Geist Variable"'
   context.fillText('resistance', 74, 1060)
-  context.font = '800 17px Arial'
+  context.font = '800 17px "Geist Variable"'
   context.fillText(resistance, 196, 1060)
-  context.font = '800 14px Arial'
+  context.font = '800 14px "Geist Variable"'
   context.fillText(`Illus. ${illustrator}`, 72, 1127)
   context.textAlign = 'center'
   context.fillText(copyright, 450, 1127)
@@ -935,7 +972,7 @@ function AcrylicRail({
   return (
     <RoundedBox args={size} radius={0.025} smoothness={4} position={position}>
       <meshPhysicalMaterial
-        color="#dce7ed"
+        color="#deddd4"
         transparent
         opacity={0.44}
         roughness={0.12}
@@ -971,17 +1008,22 @@ function PSASlab({
     rotationY: 0,
   })
   const snapRotation = useRef({ x: 0, y: 0 })
-  const frontLabel = useMemo(
-    () => createFrontLabel(project.title, project.type, project.year, index),
-    [index, project],
-  )
-  const backLabel = useMemo(() => createBackLabel(), [])
+  const geistReady = useGeistReady()
+  const frontLabel = useMemo(() => {
+    // Rebuild once Geist is available so labels aren't measured in a fallback face.
+    void geistReady
+    return createFrontLabel(project.title, project.type, project.year, index)
+  }, [index, project, geistReady])
+  const backLabel = useMemo(() => {
+    void geistReady
+    return createBackLabel()
+  }, [geistReady])
   const loadedProjectImage = useTexture(project.img)
-  const projectCard = useMemo(
-    () => createProjectCard(project, index, loadedProjectImage.image as HTMLImageElement),
-    [index, project, loadedProjectImage],
-  )
-  const loadedProjectCardBack = useTexture(pokemonCardBack)
+  const projectCard = useMemo(() => {
+    void geistReady
+    return createProjectCard(project, index, loadedProjectImage.image as HTMLImageElement)
+  }, [index, project, loadedProjectImage, geistReady])
+  const loadedProjectCardBack = useTexture(cardBack)
   const projectCardBack = useMemo(() => {
     const texture = loadedProjectCardBack.clone()
     texture.colorSpace = SRGBColorSpace
@@ -1085,13 +1127,10 @@ function PSASlab({
     >
       <RoundedBox args={[2.5, 3.65, 0.2]} radius={0.13} smoothness={8} castShadow>
         <meshPhysicalMaterial
-          color="#eaf3f7"
+          color="#faf9f5"
           transparent
           opacity={0.32}
           roughness={0.08}
-          transmission={0.72}
-          thickness={0.45}
-          ior={1.48}
         />
       </RoundedBox>
 
@@ -1114,10 +1153,10 @@ function PSASlab({
       ) : null}
       <mesh position={[0, -0.34, 0]} castShadow>
         <boxGeometry args={[1.78, 2.38, 0.085]} />
-        <meshStandardMaterial attach="material-0" color="#263744" roughness={0.72} />
-        <meshStandardMaterial attach="material-1" color="#263744" roughness={0.72} />
-        <meshStandardMaterial attach="material-2" color="#52616c" roughness={0.68} />
-        <meshStandardMaterial attach="material-3" color="#263744" roughness={0.72} />
+        <meshStandardMaterial attach="material-0" color="#252521" roughness={0.72} />
+        <meshStandardMaterial attach="material-1" color="#252521" roughness={0.72} />
+        <meshStandardMaterial attach="material-2" color="#6b6a61" roughness={0.68} />
+        <meshStandardMaterial attach="material-3" color="#252521" roughness={0.72} />
         <meshStandardMaterial
           attach="material-4"
           map={projectCard}
@@ -1438,10 +1477,10 @@ export default function ProjectSlabCarousel() {
                 shadows
                 gl={{ antialias: true, alpha: true }}
               >
-                {inspecting ? <color attach="background" args={[new Color('#edf1f3')]} /> : null}
+                {inspecting ? <color attach="background" args={[new Color('#f5f3ed')]} /> : null}
                 <ambientLight intensity={1.3} />
                 <directionalLight position={[-4, 6, 7]} intensity={2.4} castShadow />
-                <directionalLight position={[5, -2, 5]} intensity={1.2} color="#9ec8e0" />
+                <directionalLight position={[5, -2, 5]} intensity={1.2} color="#cdcfb5" />
                 <pointLight position={[0, 1, 5]} intensity={1.5} color="#ffffff" />
                 <CarouselRig
                   selectedIndex={selectedIndex}

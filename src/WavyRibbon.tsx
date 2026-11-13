@@ -62,10 +62,11 @@ const fragmentShader = `
 
   void main() {
     float phase = uTime * 0.15;
-    vec3 blue = vec3(0.22, 0.53, 0.76);
-    vec3 ice = vec3(0.82, 0.93, 0.98);
-    vec3 red = vec3(0.91, 0.07, 0.22);
-    vec3 pink = vec3(1.0, 0.39, 0.52);
+    // Warm olive/sage from brianan.ca's contribution palette.
+    vec3 blue = vec3(0.471, 0.518, 0.361);
+    vec3 ice = vec3(0.804, 0.812, 0.710);
+    vec3 red = vec3(0.302, 0.361, 0.235);
+    vec3 pink = vec3(0.639, 0.667, 0.502);
 
     float flow = sin(vUv.y * 12.0 - phase) * 0.5 + 0.5;
     vec3 leftColor = mix(blue, ice, flow * 0.48);

@@ -3,13 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  html,
   body {
-    font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+    font-family: "Geist Variable", Geist, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
   ::selection {
-    color: white;
-    background: #d7193f;
+    color: #252521;
+    background: #dcd9c9;
   }
 }
