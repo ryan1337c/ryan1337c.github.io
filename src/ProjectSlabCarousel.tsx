@@ -39,6 +39,44 @@ function ensureGeistLoaded() {
   return geistReadyPromise
 }
 
+/**
+ * Handwriting face for the "CLICK TO SEE REPO" callout. Kalam 700 is
+ * self-hosted (imported in main.tsx) because iOS has neither Segoe Print nor
+ * Comic Sans and would otherwise fall back to a cursive script face.
+ */
+const HANDWRITING_FONT = `'Kalam', 'Segoe Print', 'Comic Sans MS', cursive`
+const HANDWRITING_WEIGHT = 700
+
+let handwritingReadyPromise: Promise<void> | null = null
+
+function ensureHandwritingLoaded() {
+  if (!handwritingReadyPromise) {
+    handwritingReadyPromise = document.fonts
+      .load(`${HANDWRITING_WEIGHT} 84px 'Kalam'`, 'CLICK TO SEE REPO')
+      .then(() => undefined)
+      .catch(() => undefined)
+  }
+  return handwritingReadyPromise
+}
+
+/** True once Kalam is available, so the callout texture is drawn in it. */
+function useHandwritingReady() {
+  const [ready, setReady] = useState(() =>
+    document.fonts.check(`${HANDWRITING_WEIGHT} 84px 'Kalam'`, 'CLICK TO SEE REPO'),
+  )
+  useEffect(() => {
+    if (ready) return
+    let cancelled = false
+    void ensureHandwritingLoaded().then(() => {
+      if (!cancelled) setReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [ready])
+  return ready
+}
+
 /** True once the variable Geist face is available for canvas measurement/drawing. */
 function useGeistReady() {
   const [ready, setReady] = useState(() => document.fonts.check(`900 48px ${SITE_FONT}`))
@@ -322,12 +360,12 @@ function createBarcodeHintTagTexture(variant: 'side' | 'above' = 'side') {
   // Hand-style lettering with a tiny per-letter jitter so the callout reads
   // as an annotation rather than UI chrome.
   const label = 'CLICK TO SEE REPO'
-  const fontFamily = `'Segoe Print', 'Comic Sans MS', cursive`
+  const fontFamily = HANDWRITING_FONT
   let fontSize = 84
-  context.font = `900 ${fontSize}px ${fontFamily}`
+  context.font = `${HANDWRITING_WEIGHT} ${fontSize}px ${fontFamily}`
   while (context.measureText(label).width > canvas.width - 160 && fontSize > 40) {
     fontSize -= 4
-    context.font = `900 ${fontSize}px ${fontFamily}`
+    context.font = `${HANDWRITING_WEIGHT} ${fontSize}px ${fontFamily}`
   }
   const letters = [...label]
   const widths = letters.map((letter) => context.measureText(letter).width)
@@ -506,8 +544,17 @@ function ActiveBarcodeLinkHint({
   const aboveTagMesh = useRef<Mesh>(null)
   const circleMaterial = useRef<MeshBasicMaterial>(null)
   const worldScaleScratch = useRef(new Vector3())
-  const tagTexture = useMemo(() => createBarcodeHintTagTexture(), [])
-  const aboveTagTexture = useMemo(() => createBarcodeHintTagTexture('above'), [])
+  // Redraw the callout once Kalam has loaded, in case it was first drawn
+  // with a fallback face.
+  const handwritingReady = useHandwritingReady()
+  const tagTexture = useMemo(() => {
+    void handwritingReady
+    return createBarcodeHintTagTexture()
+  }, [handwritingReady])
+  const aboveTagTexture = useMemo(() => {
+    void handwritingReady
+    return createBarcodeHintTagTexture('above')
+  }, [handwritingReady])
   const pencilCircle = useMemo(() => createPencilCircle(), [])
 
   const hitPosition = useMemo(
@@ -1543,6 +1590,12 @@ export default function ProjectSlabCarousel() {
 
   useEffect(() => () => {
     if (selectionTimer.current !== null) window.clearTimeout(selectionTimer.current)
+  }, [])
+
+  // Start fetching the callout's handwriting font before the first
+  // inspection so the texture is usually drawn in it straight away.
+  useEffect(() => {
+    void ensureHandwritingLoaded()
   }, [])
 
   const closeInspection = () => {
