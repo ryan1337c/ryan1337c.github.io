@@ -229,6 +229,51 @@ const LABEL_BARCODE_HINT_TAG = {
   tilt: -0.035,
 }
 
+// On narrow screens there is no room beside the slab, so the callout sits
+// above the slab instead, with its arrow curving down onto the barcode. Sizes
+// are in slab-local units (the slab is 2.5 x 3.65).
+const ABOVE_HINT_TAG = {
+  canvasWidth: 960,
+  canvasHeight: 420,
+  width: 1.55,
+  height: 1.55 / (960 / 420),
+  gap: 0.05,
+  // Canvas x of the arrow tip, used to line the tip up with the barcode.
+  tipCanvasX: 300,
+}
+const ABOVE_HINT_RESERVE = ABOVE_HINT_TAG.height + ABOVE_HINT_TAG.gap
+
+/** Live inspection layout, written by CarouselRig every frame. */
+type InspectionLayout = {
+  tagMode: 'side' | 'above'
+  panMin: number
+  panMax: number
+  worldPerPx: number
+}
+
+/** DOM measurements the 3D layout needs (bars that overlap the canvas). */
+type StageMetrics = {
+  railPx: number
+  instructionsPx: number
+  controlsPx: number
+}
+
+/** Phones and tablets: cap the WebGL pixel ratio to keep frame rates up. */
+function isCompactDevice() {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(max-width: 900px), (pointer: coarse)').matches
+  )
+}
+
+function setRefValue<T>(ref: { current: T }, value: T) {
+  ref.current = value
+}
+
+function setCanvasCursor(canvas: HTMLCanvasElement, cursor: string) {
+  canvas.style.cursor = cursor
+}
+
 // The pencil circle is an oversized wobbly ellipse around the barcode hit
 // area, drawn out progressively once the inspection zoom settles. The canvas
 // keeps generous margins around the stroke so the wobble, tilt, and line
@@ -261,10 +306,10 @@ function hashNoise(value: number) {
   return x - Math.floor(x)
 }
 
-function createBarcodeHintTagTexture() {
+function createBarcodeHintTagTexture(variant: 'side' | 'above' = 'side') {
   const canvas = document.createElement('canvas')
   canvas.width = 960
-  canvas.height = 280
+  canvas.height = variant === 'above' ? ABOVE_HINT_TAG.canvasHeight : 280
   const context = canvas.getContext('2d')!
 
   const ink = '#4d5c3c'
@@ -297,15 +342,23 @@ function createBarcodeHintTagTexture() {
     cursor += widths[index]
   })
 
-  // Sketchy swoosh arrow pointing right toward the pencil circle.
+  // Sketchy swoosh arrow pointing right toward the pencil circle (or, for
+  // the narrow-screen variant, curving down onto the barcode below).
   const arrowSegments = 26
   const arrowPoints: Array<[number, number]> = []
   for (let segment = 0; segment <= arrowSegments; segment += 1) {
     const t = segment / arrowSegments
-    arrowPoints.push([
-      150 + (canvas.width - 30 - 150) * t,
-      188 + Math.sin(t * Math.PI) * 24 + Math.sin(t * 9 + 1.2) * 2.5,
-    ])
+    if (variant === 'above') {
+      arrowPoints.push([
+        600 + (ABOVE_HINT_TAG.tipCanvasX - 600) * t + Math.sin(t * Math.PI) * 70,
+        172 + (canvas.height - 26 - 172) * t + Math.sin(t * 9 + 1.2) * 2.5,
+      ])
+    } else {
+      arrowPoints.push([
+        150 + (canvas.width - 30 - 150) * t,
+        188 + Math.sin(t * Math.PI) * 24 + Math.sin(t * 9 + 1.2) * 2.5,
+      ])
+    }
   }
   for (let segment = 0; segment < arrowSegments; segment += 1) {
     const noise = hashNoise(segment * 3 + 5)
@@ -415,17 +468,31 @@ function createPencilCircle() {
   return { texture, draw }
 }
 
-function BarcodeLinkHint({
-  link,
-  inspecting,
+function BarcodeLinkHint(props: {
+  link: string
+  inspecting: boolean
+  onOpen: (event: ThreeEvent<MouseEvent>) => void
+  modelRef: { current: Group | null }
+  layoutRef: { current: InspectionLayout }
+}) {
+  // Mounted only while inspecting, so hover and animation state start fresh
+  // every time a slab is opened.
+  if (!props.inspecting || !props.link) return null
+  return <ActiveBarcodeLinkHint {...props} />
+}
+
+function ActiveBarcodeLinkHint({
   onOpen,
   modelRef,
+  layoutRef,
 }: {
   link: string
   inspecting: boolean
   onOpen: (event: ThreeEvent<MouseEvent>) => void
   modelRef: { current: Group | null }
+  layoutRef: { current: InspectionLayout }
 }) {
+  const inspecting = true
   const { gl } = useThree()
   const [hovered, setHovered] = useState(false)
   const hoverOpacity = useRef(0)
@@ -434,9 +501,13 @@ function BarcodeLinkHint({
   const tagOpacity = useRef(0)
   const tagMaterial = useRef<MeshBasicMaterial>(null)
   const tagMesh = useRef<Mesh>(null)
+  const aboveTagOpacity = useRef(0)
+  const aboveTagMaterial = useRef<MeshBasicMaterial>(null)
+  const aboveTagMesh = useRef<Mesh>(null)
   const circleMaterial = useRef<MeshBasicMaterial>(null)
   const worldScaleScratch = useRef(new Vector3())
   const tagTexture = useMemo(() => createBarcodeHintTagTexture(), [])
+  const aboveTagTexture = useMemo(() => createBarcodeHintTagTexture('above'), [])
   const pencilCircle = useMemo(() => createPencilCircle(), [])
 
   const hitPosition = useMemo(
@@ -459,25 +530,25 @@ function BarcodeLinkHint({
     [],
   )
 
+  // Line the down-arrow tip up with the barcode, keeping the tag over the slab.
+  const aboveTagPosition = useMemo(() => {
+    const tipOffset = (ABOVE_HINT_TAG.tipCanvasX / ABOVE_HINT_TAG.canvasWidth - 0.5) * ABOVE_HINT_TAG.width
+    const limit = 1.25 - ABOVE_HINT_TAG.width / 2
+    const x = Math.max(-limit, Math.min(limit, hitPosition[0] - tipOffset))
+    return [x, SLAB_HALF_HEIGHT + ABOVE_HINT_TAG.gap + ABOVE_HINT_TAG.height / 2, ANNOTATION_Z] as const
+  }, [hitPosition])
+
   useEffect(
     () => () => {
       tagTexture.dispose()
+      aboveTagTexture.dispose()
       pencilCircle.texture.dispose()
     },
-    [tagTexture, pencilCircle],
+    [tagTexture, aboveTagTexture, pencilCircle],
   )
 
-  useEffect(() => {
-    if (inspecting) {
-      // Restart the callout every time a slab is opened for inspection.
-      hintTime.current = 0
-      tagOpacity.current = 0
-      return
-    }
-    hoverOpacity.current = 0
-    setHovered(false)
-    gl.domElement.style.cursor = ''
-  }, [gl, inspecting])
+  // Reset the cursor when inspection ends and this hint unmounts.
+  useEffect(() => () => setCanvasCursor(gl.domElement, ''), [gl])
 
   useFrame((state, delta) => {
     if (inspecting) hintTime.current += delta
@@ -524,7 +595,8 @@ function BarcodeLinkHint({
       const available = halfWidth - slabHalfWidth - gap - 0.1
       const naturalWidth = LABEL_BARCODE_HINT_TAG.width * worldScale
       const tagWorldWidth = Math.max(0, Math.min(naturalWidth, available))
-      const fits = tagWorldWidth / LABEL_BARCODE_HINT_TAG.width >= 0.6
+      const sideMode = layoutRef.current.tagMode === 'side'
+      const fits = sideMode && tagWorldWidth / LABEL_BARCODE_HINT_TAG.width >= 0.6
       tagMesh.current.scale.setScalar(
         Math.max(0.0001, naturalWidth > 0 ? tagWorldWidth / naturalWidth : 0),
       )
@@ -536,12 +608,21 @@ function BarcodeLinkHint({
       tagMaterial.current.opacity = tagOpacity.current
       tagMesh.current.position.y =
         tagPosition[1] + Math.sin(elapsed * 2.6) * 0.012 * tagOpacity.current
+
+      if (aboveTagMaterial.current && aboveTagMesh.current) {
+        const aboveTarget = inspecting && !sideMode ? intro * facing : 0
+        aboveTagOpacity.current +=
+          (aboveTarget - aboveTagOpacity.current) * (1 - Math.exp(-delta / 0.1))
+        aboveTagMaterial.current.opacity = aboveTagOpacity.current
+        aboveTagMesh.current.position.y =
+          aboveTagPosition[1] + Math.sin(elapsed * 2.6) * 0.012 * aboveTagOpacity.current
+      }
     }
   })
 
   const handlePointerEnter = () => {
     setHovered(true)
-    gl.domElement.style.cursor = 'pointer'
+    setCanvasCursor(gl.domElement, 'pointer')
     // Restart the annotation clock so the circle redraws and the tag
     // reappears with the full animation sequence.
     hintTime.current = 0
@@ -549,10 +630,8 @@ function BarcodeLinkHint({
 
   const handlePointerLeave = () => {
     setHovered(false)
-    gl.domElement.style.cursor = inspecting ? 'grab' : ''
+    setCanvasCursor(gl.domElement, 'grab')
   }
-
-  if (!inspecting || !link) return null
 
   return (
     <group>
@@ -603,6 +682,22 @@ function BarcodeLinkHint({
         <meshBasicMaterial
           ref={tagMaterial}
           map={tagTexture}
+          transparent
+          opacity={0}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh
+        ref={aboveTagMesh}
+        position={aboveTagPosition}
+        rotation={[0, 0, LABEL_BARCODE_HINT_TAG.tilt]}
+        raycast={() => null}
+      >
+        <planeGeometry args={[ABOVE_HINT_TAG.width, ABOVE_HINT_TAG.height]} />
+        <meshBasicMaterial
+          ref={aboveTagMaterial}
+          map={aboveTagTexture}
           transparent
           opacity={0}
           depthWrite={false}
@@ -990,12 +1085,16 @@ function PSASlab({
   active,
   inspecting,
   onInspect,
+  inspectionPan,
+  layoutRef,
 }: {
   project: (typeof projects)[number]
   index: number
   active: boolean
   inspecting: boolean
   onInspect: () => void
+  inspectionPan: { current: number }
+  layoutRef: { current: InspectionLayout }
 }) {
   const model = useRef<Group>(null)
   const drag = useRef({
@@ -1006,6 +1105,8 @@ function PSASlab({
     startY: 0,
     rotationX: 0,
     rotationY: 0,
+    startPan: 0,
+    touchPan: false,
   })
   const snapRotation = useRef({ x: 0, y: 0 })
   const geistReady = useGeistReady()
@@ -1066,6 +1167,13 @@ function PSASlab({
       startY: event.clientY,
       rotationX: model.current.rotation.x,
       rotationY: model.current.rotation.y,
+      startPan: inspectionPan.current,
+      // Touch screens have no wheel: when zoomed past the screen, a vertical
+      // finger drag pans the slab instead of tilting it.
+      touchPan:
+        inspecting &&
+        event.pointerType !== 'mouse' &&
+        layoutRef.current.panMax - layoutRef.current.panMin > 0.001,
     }
   }
 
@@ -1077,6 +1185,14 @@ function PSASlab({
     if (Math.hypot(distanceX, distanceY) > 4) drag.current.moved = true
     if (!inspecting) return
     model.current.rotation.y = drag.current.rotationY + distanceX * 0.009
+    if (drag.current.touchPan) {
+      const { panMin, panMax, worldPerPx } = layoutRef.current
+      setRefValue(
+        inspectionPan,
+        Math.max(panMin, Math.min(panMax, drag.current.startPan - distanceY * worldPerPx)),
+      )
+      return
+    }
     model.current.rotation.x = Math.max(
       -Math.PI * 0.48,
       Math.min(Math.PI * 0.48, drag.current.rotationX + distanceY * 0.009),
@@ -1149,6 +1265,7 @@ function PSASlab({
           inspecting={inspecting}
           onOpen={handleBarcodeClick}
           modelRef={model}
+          layoutRef={layoutRef}
         />
       ) : null}
       <mesh position={[0, -0.34, 0]} castShadow>
@@ -1180,15 +1297,12 @@ function PSASlab({
 }
 
 const SLAB_HALF_HEIGHT = 3.65 / 2
+const SLAB_HALF_WIDTH = 2.5 / 2
 const INSPECTION_SLAB_Y = 0.18
 const INSPECTION_SLAB_Z = 0.8
-const INSPECTION_CAMERA_Y = 0.05
-// Half the visible world height at the slab's depth while inspecting
-// (fov 38, camera z 8.4).
-const INSPECTION_VIEW_HALF_HEIGHT = Math.tan((38 * Math.PI) / 360) * (8.4 - INSPECTION_SLAB_Z)
-// The slab rests slightly above the camera's vertical center, so the pan
-// limits that align the slab's edges with the viewport are asymmetric.
-const INSPECTION_CENTER_BIAS = INSPECTION_SLAB_Y - INSPECTION_CAMERA_Y
+const INSPECTION_BASE_SCALE = 1.32
+const STORY_SLAB_SCALE = 1.25
+const RIG_OFFSET_Y = -0.05
 
 function CarouselRig({
   selectedIndex,
@@ -1197,6 +1311,8 @@ function CarouselRig({
   inspectionPan,
   canInspect,
   onInspect,
+  stageMetrics,
+  layoutRef,
 }: {
   selectedIndex: number
   inspecting: boolean
@@ -1204,8 +1320,11 @@ function CarouselRig({
   inspectionPan: { current: number }
   canInspect: boolean
   onInspect: () => void
+  stageMetrics: { current: StageMetrics }
+  layoutRef: { current: InspectionLayout }
 }) {
   const items = useRef<Array<Group | null>>([])
+  const rig = useRef<Group>(null)
   const phase = useRef(0)
 
   useFrame((state, delta) => {
@@ -1217,14 +1336,68 @@ function CarouselRig({
       camera.fov = nextFov
       camera.updateProjectionMatrix()
     }
-    // The standard crop is centered together with the 132px progress rail,
-    // so its visual midpoint sits 66px above the full canvas midpoint.
-    // Convert that pixel offset to world units to keep the slabs centered at
-    // every viewport height without changing the WebGL surface dimensions.
+    // The standard crop is centered together with the progress rail, so its
+    // visual midpoint sits half a rail above the full canvas midpoint. On
+    // short or narrow screens the slabs are also scaled down (and nudged) so
+    // the whole focused slab stays clear of the instructions bar. Large
+    // screens keep the original scale and centering.
+    const { width: stageWidth, height: stageHeight } = state.size
+    const metrics = stageMetrics.current
     const viewportHeight = state.viewport.getCurrentViewport(camera, [0, 0, 0]).height
-    const cropCenterOffset = inspecting ? 0 : viewportHeight * 66 / state.size.height
+    const storyWorldPerPx = viewportHeight / stageHeight
+    const cropHeight = Math.min(stageHeight * 0.78, stageHeight - metrics.railPx)
+    const cropTop = Math.max(0, (stageHeight - cropHeight - metrics.railPx) / 2)
+    const regionTop = cropTop + 8
+    const regionBottom = cropTop + cropHeight - metrics.instructionsPx - 8
+    const slabHeightPx = (SLAB_HALF_HEIGHT * 2 * STORY_SLAB_SCALE) / storyWorldPerPx
+    const slabWidthPx = (SLAB_HALF_WIDTH * 2 * STORY_SLAB_SCALE) / storyWorldPerPx
+    const storyFit = Math.max(
+      0.35,
+      Math.min(1, (regionBottom - regionTop) / slabHeightPx, (stageWidth * 0.86) / slabWidthPx),
+    )
+    const halfSlabPx = (slabHeightPx * storyFit) / 2
+    const cropCenter = cropTop + cropHeight / 2
+    const storyCenterPx =
+      regionTop + halfSlabPx > regionBottom - halfSlabPx
+        ? (regionTop + regionBottom) / 2
+        : Math.max(regionTop + halfSlabPx, Math.min(regionBottom - halfSlabPx, cropCenter))
+    const cropCenterOffset = inspecting ? 0 : (stageHeight / 2 - storyCenterPx) * storyWorldPerPx
     const targetCameraY = 0.05 - cropCenterOffset
     camera.position.y += (targetCameraY - camera.position.y) * cameraDamping
+    if (rig.current) {
+      const rigScale = inspecting ? 1 : storyFit
+      rig.current.scale.setScalar(rig.current.scale.x + (rigScale - rig.current.scale.x) * cameraDamping)
+    }
+
+    // Inspection layout: fit the slab (plus the callout when it sits above
+    // the slab) inside the area between the top edge and the controls bar,
+    // by both width and height.
+    const viewHalfHeight =
+      Math.tan((camera.fov * Math.PI) / 360) * (camera.position.z - INSPECTION_SLAB_Z)
+    const viewHalfWidth = viewHalfHeight * (stageWidth / stageHeight)
+    const worldPerPx = (viewHalfHeight * 2) / stageHeight
+    const margin = stageWidth >= 1024 ? 0 : 10
+    const availableHeight = Math.max(1, stageHeight - metrics.controlsPx - margin * 2) * worldPerPx
+    const availableWidth = Math.max(1, stageWidth - margin * 2) * worldPerPx
+    let tagMode: InspectionLayout['tagMode'] = 'side'
+    let baseScale = Math.min(
+      INSPECTION_BASE_SCALE,
+      availableHeight / (SLAB_HALF_HEIGHT * 2),
+      availableWidth / (SLAB_HALF_WIDTH * 2),
+    )
+    // Same rule the side callout uses to decide whether it fits.
+    if (viewHalfWidth - SLAB_HALF_WIDTH * baseScale - 0.18 < LABEL_BARCODE_HINT_TAG.width * 0.6) {
+      tagMode = 'above'
+      baseScale = Math.min(
+        INSPECTION_BASE_SCALE,
+        availableHeight / (SLAB_HALF_HEIGHT * 2 + ABOVE_HINT_RESERVE),
+        availableWidth / (SLAB_HALF_WIDTH * 2),
+      )
+    }
+    const contentTop = SLAB_HALF_HEIGHT + (tagMode === 'above' ? ABOVE_HINT_RESERVE : 0)
+    const regionTopWorld = camera.position.y + viewHalfHeight - margin * worldPerPx
+    const regionBottomWorld =
+      camera.position.y - viewHalfHeight + (metrics.controlsPx + margin) * worldPerPx
 
     let distance = selectedIndex - phase.current
     while (distance > projects.length / 2) distance -= projects.length
@@ -1237,25 +1410,40 @@ function CarouselRig({
       if (inspecting && index === selectedIndex) {
         item.position.x += (0 - item.position.x) * (1 - Math.exp(-delta * 5))
         item.position.z += (INSPECTION_SLAB_Z - item.position.z) * (1 - Math.exp(-delta * 5))
-        // Keep the complete slab inside the camera's vertical field of view.
-        // A taller inspection stage increases its rendered pixel size without
-        // pushing the slab's label or lower edge outside the viewport.
-        const inspectionScale = 1.32 * (1 + inspectionZoom * 0.1)
+        // Keep the complete slab inside the visible area above the controls.
+        const inspectionScale = baseScale * (1 + inspectionZoom * 0.1)
         const zoomScale =
           item.scale.x + (inspectionScale - item.scale.x) * (1 - Math.exp(-delta * 5))
         item.scale.setScalar(zoomScale)
-        // Vertical pan while zoomed past 100%: clamp the pan target so the
-        // slab's top and bottom edges can never scroll past the viewport,
-        // then ease the slab toward it. Collapses to zero when the slab fits.
-        const viewHalfHeight =
-          Math.tan((camera.fov * Math.PI) / 360) * (camera.position.z - item.position.z)
-        const overflow = Math.max(0, SLAB_HALF_HEIGHT * zoomScale - viewHalfHeight)
-        const centerBias = INSPECTION_SLAB_Y - camera.position.y
-        const panMin = overflow > 0 ? Math.min(0, -overflow - centerBias) : 0
-        const panMax = overflow > 0 ? Math.max(0, overflow - centerBias) : 0
+        // Slab y values where the content's top / bottom edge meets the
+        // visible region (item y is relative to the rig group).
+        const yTopAligned = regionTopWorld - RIG_OFFSET_Y - contentTop * inspectionScale
+        const yBottomAligned = regionBottomWorld - RIG_OFFSET_Y + SLAB_HALF_HEIGHT * inspectionScale
+        let baseY: number
+        const panMin = 0
+        let panMax = 0
+        if (yBottomAligned <= yTopAligned) {
+          // Fits: large screens keep the original resting height; smaller
+          // screens center the slab (and callout) in the free area.
+          const centeredY =
+            (regionTopWorld + regionBottomWorld) / 2 -
+            RIG_OFFSET_Y -
+            ((contentTop - SLAB_HALF_HEIGHT) / 2) * inspectionScale
+          const preferredY = stageWidth >= 1024 ? INSPECTION_SLAB_Y : centeredY
+          baseY = Math.max(yBottomAligned, Math.min(yTopAligned, preferredY))
+        } else {
+          // Zoomed past the screen: start with the label in view and let
+          // wheel, keys, or a touch drag pan down to the bottom edge.
+          baseY = yTopAligned
+          panMax = yBottomAligned - yTopAligned
+        }
         inspectionPan.current = Math.max(panMin, Math.min(panMax, inspectionPan.current))
+        layoutRef.current.tagMode = tagMode
+        layoutRef.current.panMin = panMin
+        layoutRef.current.panMax = panMax
+        layoutRef.current.worldPerPx = worldPerPx
         item.position.y +=
-          (INSPECTION_SLAB_Y + inspectionPan.current - item.position.y) *
+          (baseY + inspectionPan.current - item.position.y) *
           (1 - Math.exp(-delta * 5))
         return
       }
@@ -1271,14 +1459,14 @@ function CarouselRig({
       item.position.z += (targetZ - item.position.z) * movement
       // Scale the complete slab group so its label typography, internal
       // spacing, and barcode hit target retain their exact proportions.
-      const scale = 1.25 - depth * 0.2
+      const scale = STORY_SLAB_SCALE - depth * 0.2
       item.scale.setScalar(item.scale.x + (scale - item.scale.x) * movement)
       item.rotation.y = 0
     })
   })
 
   return (
-    <group position={[0, -0.05, 0]}>
+    <group ref={rig} position={[0, RIG_OFFSET_Y, 0]}>
       {projects.map((project, index) => (
         <group
           key={project.title}
@@ -1292,6 +1480,8 @@ function CarouselRig({
             active={canInspect && index === selectedIndex}
             inspecting={inspecting && index === selectedIndex}
             onInspect={onInspect}
+            inspectionPan={inspectionPan}
+            layoutRef={layoutRef}
           />
         </group>
       ))}
@@ -1309,6 +1499,47 @@ export default function ProjectSlabCarousel() {
   const progressFill = useRef<HTMLDivElement>(null)
   const progressRunner = useRef<HTMLDivElement>(null)
   const selectionTimer = useRef<number | null>(null)
+  const shell = useRef<HTMLDivElement>(null)
+  const instructionsBar = useRef<HTMLDivElement>(null)
+  const controlsBar = useRef<HTMLDivElement>(null)
+  const stageMetrics = useRef<StageMetrics>({ railPx: 132, instructionsPx: 64, controlsPx: 64 })
+  const inspectionLayout = useRef<InspectionLayout>({
+    tagMode: 'side',
+    panMin: 0,
+    panMax: 0,
+    worldPerPx: 0.006,
+  })
+  const [compactDevice] = useState(isCompactDevice)
+  const [coarsePointer] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches,
+  )
+
+  // Measure the HTML bars that sit over the canvas so the 3D layout can keep
+  // the slab clear of them (they change height at CSS breakpoints and with
+  // the iOS safe-area inset).
+  useEffect(() => {
+    const measure = () => {
+      const metrics = stageMetrics.current
+      if (shell.current) {
+        const rail = parseFloat(
+          getComputedStyle(shell.current).getPropertyValue('--progress-rail-height'),
+        )
+        if (Number.isFinite(rail)) metrics.railPx = rail
+      }
+      if (instructionsBar.current) metrics.instructionsPx = instructionsBar.current.offsetHeight
+      if (controlsBar.current) metrics.controlsPx = controlsBar.current.offsetHeight
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    for (const element of [shell.current, instructionsBar.current, controlsBar.current]) {
+      if (element) observer.observe(element)
+    }
+    window.addEventListener('resize', measure)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [inspecting])
 
   useEffect(() => () => {
     if (selectionTimer.current !== null) window.clearTimeout(selectionTimer.current)
@@ -1365,15 +1596,11 @@ export default function ProjectSlabCarousel() {
     // vertically instead of scrolling the page. The pan target is clamped so
     // the slab's top and bottom edges can never scroll past the viewport.
     const applyPanDelta = (deltaPx: number) => {
-      const scale = 1.32 * (1 + inspectionZoom * 0.1)
-      const overflow = Math.max(0, SLAB_HALF_HEIGHT * scale - INSPECTION_VIEW_HALF_HEIGHT)
-      if (overflow <= 0) return
-      const panMin = Math.min(0, -overflow - INSPECTION_CENTER_BIAS)
-      const panMax = Math.max(0, overflow - INSPECTION_CENTER_BIAS)
-      const worldPerPixel = (INSPECTION_VIEW_HALF_HEIGHT * 2) / window.innerHeight
+      const { panMin, panMax, worldPerPx } = inspectionLayout.current
+      if (panMax - panMin <= 0.001) return
       inspectionPan.current = Math.max(
         panMin,
-        Math.min(panMax, inspectionPan.current + deltaPx * worldPerPixel),
+        Math.min(panMax, inspectionPan.current + deltaPx * worldPerPx),
       )
     }
 
@@ -1433,7 +1660,7 @@ export default function ProjectSlabCarousel() {
       window.removeEventListener('keydown', preventScrollKeys)
       window.removeEventListener('scroll', holdScrollPosition)
     }
-  }, [inspecting, inspectionZoom])
+  }, [inspecting])
 
   const selectStoryPoint = (index: number) => {
     const moveToStoryPoint = () => {
@@ -1466,14 +1693,14 @@ export default function ProjectSlabCarousel() {
   }
 
   return (
-    <div className="slab-story" ref={story}>
+    <div className={`slab-story${inspecting ? ' is-inspecting' : ''}`} ref={story}>
       <div className="slab-story-sticky">
-        <div className={`slab-carousel-shell${inspecting ? ' is-inspecting' : ''}`}>
+        <div className={`slab-carousel-shell${inspecting ? ' is-inspecting' : ''}`} ref={shell}>
           <div className={`slab-carousel${storyActive ? ' is-inspectable' : ''}${inspecting ? ' is-inspecting' : ''}`}>
             <div className="slab-canvas-stage">
               <Canvas
                 camera={{ position: [0, 0.05, 8.4], fov: 54 }}
-                dpr={[1, 1.75]}
+                dpr={compactDevice ? [1, 1.5] : [1, 1.75]}
                 shadows
                 gl={{ antialias: true, alpha: true }}
               >
@@ -1488,6 +1715,8 @@ export default function ProjectSlabCarousel() {
                   inspectionZoom={inspectionZoom}
                   inspectionPan={inspectionPan}
                   canInspect={storyActive}
+                  stageMetrics={stageMetrics}
+                  layoutRef={inspectionLayout}
                   onInspect={() => {
                     if (storyActive) {
                       setInspectionZoom(0)
@@ -1499,7 +1728,7 @@ export default function ProjectSlabCarousel() {
               </Canvas>
             </div>
             {inspecting ? (
-              <div className="inspection-controls">
+              <div className="inspection-controls" ref={controlsBar}>
                 <button type="button" onClick={closeInspection}>← Back to story</button>
                 <div className="inspection-zoom-controls" aria-label="Inspection zoom controls">
                   <button
@@ -1534,9 +1763,11 @@ export default function ProjectSlabCarousel() {
                 </div>
               </div>
             ) : (
-              <div className="carousel-instructions">
+              <div className="carousel-instructions" ref={instructionsBar}>
                 <span className={`instructions-cta${storyActive ? ' is-live' : ''}`}>
-                  {storyActive ? 'Click the focused slab to inspect' : 'Inspection unlocks inside the story'}
+                  {storyActive
+                    ? `${coarsePointer ? 'Tap' : 'Click'} the focused slab to inspect`
+                    : 'Inspection unlocks inside the story'}
                 </span>
               </div>
             )}

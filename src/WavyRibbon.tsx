@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   BufferGeometry,
   CatmullRomCurve3,
@@ -228,12 +228,17 @@ function RibbonMesh() {
 }
 
 export default function WavyRibbon() {
+  // Phones and tablets get a lower pixel-ratio cap; this full-page canvas is
+  // the most expensive thing on the page there. Desktop is unchanged.
+  const [compactDevice] = useState(
+    () => window.matchMedia('(max-width: 900px), (pointer: coarse)').matches,
+  )
   return (
     <div className="ribbon-canvas" aria-hidden="true">
       <Canvas
         orthographic
         camera={{ position: [0, 0, 10], zoom: 80 }}
-        dpr={[1.5, 2]}
+        dpr={compactDevice ? [1, 1.5] : [1.5, 2]}
         gl={{ alpha: true, antialias: true }}
       >
         <RibbonMesh />

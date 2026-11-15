@@ -19,10 +19,23 @@
   --accent-rgb: 77, 92, 60;
   --accent-mid-rgb: 120, 132, 92;
   --background-rgb: 245, 243, 237;
+  /* Viewport height that iOS Safari's toolbars can't cover. Falls back to
+     100vh where small-viewport units aren't supported; identical on desktop. */
+  --viewport-h: 100vh;
+  --viewport-dynamic-h: 100vh;
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+@supports (height: 100svh) {
+  :root {
+    --viewport-h: 100svh;
+    --viewport-dynamic-h: 100dvh;
+  }
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   margin: 0;
   background:
@@ -62,7 +75,7 @@ footer {
 
 .site-header {
   height: 82px;
-  padding: 0 clamp(24px, 5vw, 80px);
+  padding: 0 max(clamp(24px, 5vw, 80px), var(--safe-right)) 0 max(clamp(24px, 5vw, 80px), var(--safe-left));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -141,8 +154,8 @@ footer {
 }
 
 .hero-section {
-  min-height: calc(100vh - 82px);
-  padding: clamp(70px, 9vw, 140px) clamp(24px, 8vw, 140px);
+  min-height: calc(var(--viewport-h) - 82px);
+  padding: clamp(70px, 9vw, 140px) max(clamp(24px, 8vw, 140px), var(--safe-right)) clamp(70px, 9vw, 140px) max(clamp(24px, 8vw, 140px), var(--safe-left));
   display: grid; grid-template-columns: 1.05fr .95fr; align-items: center; gap: 8vw;
   background: transparent;
   position: relative;
@@ -205,7 +218,7 @@ footer {
 .card-footer b { color: var(--accent-pale); }
 .slab-shadow { position: absolute; z-index: 1; inset: 30px -24px -20px 35px; border: 2px solid var(--accent-mid); border-radius: 28px; transform: rotate(-5deg); }
 
-.section { padding: clamp(80px, 10vw, 150px) clamp(24px, 8vw, 140px); }
+.section { padding: clamp(80px, 10vw, 150px) max(clamp(24px, 8vw, 140px), var(--safe-right)) clamp(80px, 10vw, 150px) max(clamp(24px, 8vw, 140px), var(--safe-left)); }
 .projects-section {
   margin: 0 clamp(14px, 3vw, 52px);
   background: rgba(250,249,245,.88);
@@ -244,20 +257,30 @@ footer {
   position: relative;
 }
 .slab-story-sticky {
-  min-height: 100vh;
+  min-height: var(--stage-h);
   position: sticky;
   top: 0;
   display: flex;
   align-items: center;
 }
+.slab-story {
+  /* Stage height for the sticky carousel. Small-viewport units keep the
+     instructions bar and the progress rail above iOS Safari's toolbars. */
+  --stage-h: var(--viewport-h);
+}
+.slab-story.is-inspecting {
+  /* While inspecting the page can't scroll, so the toolbar state is stable:
+     use the live (dynamic) height so the whole visible area is used. */
+  --stage-h: var(--viewport-dynamic-h);
+}
 .slab-carousel-shell {
   --progress-rail-height: 132px;
-  --carousel-crop-height: min(78vh, calc(100vh - var(--progress-rail-height)));
-  --carousel-crop-top: max(0px, calc((100vh - var(--carousel-crop-height) - var(--progress-rail-height)) / 2));
-  --carousel-crop-bottom: calc(100vh - var(--carousel-crop-height) - var(--carousel-crop-top));
+  --carousel-crop-height: min(calc(var(--stage-h) * .78), calc(var(--stage-h) - var(--progress-rail-height)));
+  --carousel-crop-top: max(0px, calc((var(--stage-h) - var(--carousel-crop-height) - var(--progress-rail-height)) / 2));
+  --carousel-crop-bottom: calc(var(--stage-h) - var(--carousel-crop-height) - var(--carousel-crop-top));
   --project-content-gutter: calc(clamp(14px, 3vw, 52px) + clamp(24px, 8vw, 140px));
   width: 100%;
-  height: 100vh;
+  height: var(--stage-h);
   position: relative;
 }
 .slab-carousel-shell.is-inspecting .carousel-progress {
@@ -268,7 +291,7 @@ footer {
 
 .slab-carousel {
   width: 100vw;
-  height: 100vh;
+  height: var(--stage-h);
   margin-left: 50%;
   position: relative;
   overflow: hidden;
@@ -290,7 +313,7 @@ footer {
 }
 .slab-canvas-stage {
   width: 100vw;
-  height: 100vh;
+  height: var(--stage-h);
 }
 .slab-carousel canvas { display: block; cursor: default; }
 .slab-carousel.is-inspectable canvas { cursor: pointer; }
@@ -342,7 +365,7 @@ footer {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   min-height: 64px;
-  padding: 10px 22px;
+  padding: 10px max(22px, var(--safe-right)) calc(10px + var(--safe-bottom)) max(22px, var(--safe-left));
   pointer-events: none;
   color: var(--muted);
   border-top: 1px solid rgba(var(--foreground-rgb), .18);
@@ -706,7 +729,7 @@ footer {
 .contact-form-status { margin-top: 16px; color: var(--foreground); font-size: 14px; font-weight: 700; text-transform: none; letter-spacing: 0; }
 .contact-form-status--error { color: var(--accent); }
 
-footer { display: flex; align-items: center; justify-content: space-between; padding: 30px clamp(24px, 8vw, 140px); background: var(--foreground); color: var(--on-dark); z-index: 2; }
+footer { display: flex; align-items: center; justify-content: space-between; padding: 30px max(clamp(24px, 8vw, 140px), var(--safe-right)) calc(30px + var(--safe-bottom)) max(clamp(24px, 8vw, 140px), var(--safe-left)); background: var(--foreground); color: var(--on-dark); z-index: 2; }
 footer p, footer a { font-size: 9px; letter-spacing: .05em; color: var(--on-dark-muted); }
 footer a {
   color: var(--on-dark); font-weight: 800;
@@ -792,10 +815,15 @@ footer a:focus-visible { outline: 2px solid var(--accent-soft); outline-offset: 
     gap: 14px;
   }
   .inspection-controls {
-    min-height: 76px;
-    gap: 14px;
-    padding-inline: 16px;
+    min-height: 64px;
+    gap: 10px;
+    padding-left: max(12px, var(--safe-left));
+    padding-right: max(12px, var(--safe-right));
+    grid-template-columns: auto 1fr;
   }
+  .inspection-controls > button:first-child { padding: 12px 16px; min-height: 44px; }
+  .inspection-zoom-controls { justify-self: end; gap: 6px; }
+  .inspection-controls .inspection-zoom-button { width: 44px; height: 44px; padding: 11px; }
   .inspection-controls-copy {
     display: none;
   }
@@ -811,5 +839,57 @@ footer a:focus-visible { outline: 2px solid var(--accent-soft); outline-offset: 
   .contact-form { padding: 26px 22px; }
   .projects-section { margin-inline: 8px; }
   .skills-section { width: calc(100% - 16px); }
-  footer { flex-direction: column; gap: 22px; text-align: center; }
+  footer { flex-direction: column; gap: 18px; text-align: center; }
+  footer p { font-size: 11px; }
+  footer a { font-size: 11px; display: inline-flex; align-items: center; min-height: 44px; padding: 8px 18px; }
+  .text-link { display: inline-block; padding: 12px 0 6px; }
+  .social-links a { min-height: 44px; padding: 11px 20px; font-size: 12px; }
+  .email-link { font-size: clamp(15px, 4.6vw, 19px); gap: 12px; overflow-wrap: anywhere; }
+  .contact-form label { margin-bottom: 18px; }
+  .section-heading { margin-bottom: 48px; }
+  .skills-section::before { font-size: 240px; right: -10px; top: -40px; }
+  .hero-section::before { height: 80px; }
+  .progress-heading { margin-bottom: 26px; }
+}
+
+/* Touch devices: give the tiny progress pins a 44px hit area without
+   changing how they look. */
+@media (pointer: coarse) {
+  .progress-pin::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  .main-nav a:hover, .primary-button:hover, .social-links a:hover, .email-link:hover { transform: none; }
+}
+
+/* Short landscape phones: the 132px progress rail and 64px bars would leave
+   almost no room for the slabs, so compact both. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .site-header { height: 64px; }
+  .hero-section { min-height: auto; padding-top: 48px; padding-bottom: 56px; gap: 6vw; }
+  .hero-copy h1 { font-size: clamp(40px, 7vw, 60px); }
+  .hero-bio { margin: 22px 0 26px; }
+}
+@media (max-height: 500px) and (orientation: landscape) and (min-width: 640px) {
+  /* Wide-but-short phones: put the profile slab beside the copy again. */
+  .hero-section { grid-template-columns: 1.15fr .85fr; }
+  .slab-wrap { max-width: 290px; }
+  .slab-carousel-shell { --progress-rail-height: 92px; }
+  .carousel-progress {
+    min-height: calc(var(--progress-rail-height) - 10px);
+    margin: 4px max(16px, var(--safe-right)) 6px max(16px, var(--safe-left));
+    padding: 12px 28px 18px;
+    border-radius: 20px;
+  }
+  .progress-heading { margin-bottom: 18px; }
+  .progress-pin small { display: none; }
+  .carousel-instructions { min-height: 48px; padding-top: 6px; padding-bottom: 6px; }
+  .carousel-instructions .instructions-cta { padding: 8px 18px; }
+  .inspection-controls { min-height: 52px; padding-top: 6px; padding-bottom: calc(6px + var(--safe-bottom)); }
+  .inspection-controls-copy { display: none; }
 }
