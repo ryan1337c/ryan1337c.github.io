@@ -106,14 +106,9 @@ type Project = {
   abilityTitle: string
   abilityText: string
   attackTitle: string
-  attackMetric: string
   attackText: string
   weakness: string
   resistance: string
-  illustrator?: string
-  copyright?: string
-  level?: string
-  hp?: string
   link?: string
 }
 
@@ -126,15 +121,12 @@ const projects: Project[] = [
     img: meiganImg,
     mediaFit: 'cover',
     summary: 'SwiftUI · ARKit/RealityKit · on-device Core ML (YOLO) · Supabase',
-    abilityTitle: 'Ability: Standout Feature',
+    abilityTitle: 'Standout feature',
     abilityText: 'Measure distances and surfaces in AR using camera/LiDAR; get accurate 3D-anchored measurements, real-time object detection, and flattened exports for documenting dimensions',
     attackTitle: 'Ruler, Flatten & Identify',
-    attackMetric: '90+',
     attackText: 'Ruler mode: place connected points with snapping and live preview; Flatten mode: flatten four-corner surfaces and calculate dimensions; Identity Mode: run real-time on-device object detection for labeling',
     weakness: 'iOS device & Apple signing; device-dependent performance',
     resistance: 'On-device Core ML & LiDAR; native SwiftUI + ARKit',
-    illustrator: 'Ryan Chen',
-    copyright: '©2026 Ryan Chen',
     link: 'https://github.com/ryan1337c/meigan',
   },
   {
@@ -146,15 +138,12 @@ const projects: Project[] = [
     mediaFit: 'contain',
     mediaZoom: 1.18,
     summary: 'Next.js (TypeScript) · Tailwind · Supabase · OpenAI/Claude/DeepSeek integrations',
-    abilityTitle: 'Ability: Standout Feature',
+    abilityTitle: 'Standout feature',
     abilityText: 'All-in-one AI copilot that routes prompts to the best models (Claude, DeepSeek, OpenAI); delivers faster, higher-quality outputs and preserves conversation history',
     attackTitle: 'Tool automation',
-    attackMetric: '80',
     attackText: 'Generate images, quizzes, and flashcards; tailor resumes; and analyze uploaded documents via model APIs to produce polished assets and structured outputs',
     weakness: 'External API keys (OpenAI/DeepSeek); cost & latency risk',
     resistance: 'Model-agnostic routing; Supabase-backed persistence',
-    illustrator: 'Ryan Chen',
-    copyright: '©2026 Ryan Chen',
     link: 'https://github.com/ryan1337c/omni',
   },
   {
@@ -165,15 +154,12 @@ const projects: Project[] = [
     img: fontimizeImg,
     mediaFit: 'contain',
     summary: 'Chrome extension · JS background/content/popup · injected CSS + webfonts',
-    abilityTitle: 'Ability: Standout Feature',
+    abilityTitle: 'Standout feature',
     abilityText: 'Customize website typography and highlight content by injecting fonts, sizes, spacing, and styles per site; improves readability and accessibility for personalized web reading',
     attackTitle: 'Font tuner & Highlight tool',
-    attackMetric: '70+',
     attackText: 'Inject CSS and webfonts and provide a highlight tool to instantly adjust typography and emphasize content per site',
     weakness: 'Chrome-only; injected CSS can break complex sites;',
     resistance: 'Client-side only; instant local style changes; no backend',
-    illustrator: 'Ryan Chen',
-    copyright: '©2026 Ryan Chen',
     link: 'https://github.com/ryan1337c/fontimize',
   },
   {
@@ -184,15 +170,12 @@ const projects: Project[] = [
     img: kirbyImg,
     mediaFit: 'cover',
     summary: 'Java (JDK 8+) desktop game · Game.Engine entrypoint',
-    abilityTitle: 'Ability: Standout Feature',
+    abilityTitle: 'Standout feature',
     abilityText: 'Play a recreated Kirby-style platformer built in Java; local levels showcase core mechanics, controls, and level design',
     attackTitle: 'Game Engine',
-    attackMetric: '60',
     attackText: 'Run the Game.Engine to play recreated levels with local input, physics, and enemy logic for a classic platformer experience',
     weakness: 'Audio/SFX missing; requires JDK/IDE; no installer',
     resistance: 'Self-contained Java codebase; easy to run and modify locally',
-    illustrator: 'Ryan Chen',
-    copyright: '©2026 Ryan Chen',
     link: 'https://github.com/ryan1337c/kirby',
   },
 ]
@@ -775,17 +758,44 @@ function createFrontLabel(title: string, type: string, year: string, index: numb
   context.fillStyle = '#f5f3ed'
   context.fillRect(24, 24, canvas.width - 48, canvas.height - 48)
   context.fillStyle = '#252521'
-  context.font = '700 48px "Geist Variable"'
-  context.fillText(`${year}  —  ${type.toUpperCase()}`, 52, 88)
-  context.font = '800 46px "Geist Variable"'
-  context.fillText(title.toUpperCase(), 52, 153)
-  context.font = '700 32px "Geist Variable"'
-  context.fillText('PERSONAL PROJECT', 52, 210)
+  // Right-hand column first, so the left-hand text can be fitted into
+  // whatever width is left over and can never run into it.
+  const labelLeft = 52
+  const labelRight = 968
+  const labelGap = 36
   context.textAlign = 'right'
   context.font = '800 48px "Geist Variable"'
-  context.fillText(`#00${index + 1}`, 968, 88)
+  const numberText = `#00${index + 1}`
+  const numberWidth = context.measureText(numberText).width
+  context.fillText(numberText, labelRight, 88)
   context.font = '700 38px "Geist Variable"'
-  context.fillText('GEM MINT 10', 968, 153)
+  const gradeText = 'GEM MINT 10'
+  const gradeWidth = context.measureText(gradeText).width
+  context.fillText(gradeText, labelRight, 153)
+
+  context.textAlign = 'left'
+  fillTextFitted(
+    context,
+    `${year}  —  ${type.toUpperCase()}`,
+    labelLeft,
+    88,
+    labelRight - labelLeft - numberWidth - labelGap,
+    '700 {size}px "Geist Variable"',
+    48,
+    28,
+  )
+  fillTextFitted(
+    context,
+    title.toUpperCase(),
+    labelLeft,
+    153,
+    labelRight - labelLeft - gradeWidth - labelGap,
+    '800 {size}px "Geist Variable"',
+    46,
+    28,
+  )
+  context.font = '700 32px "Geist Variable"'
+  context.fillText('PERSONAL PROJECT', 52, 210)
 
   context.textAlign = 'left'
   const { startX, startY, barCount, barStep, barHeight, wideBarWidth, narrowBarWidth } =
@@ -824,6 +834,77 @@ function createBackLabel() {
   return finishTexture(new CanvasTexture(canvas))
 }
 
+/**
+ * Draws a single line of text that is guaranteed to fit `maxWidth`: the font
+ * shrinks from `maxSize` down to `minSize`, and if it still does not fit the
+ * text is truncated with an ellipsis. `fontTemplate` contains "{size}".
+ */
+function fillTextFitted(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  fontTemplate: string,
+  maxSize: number,
+  minSize: number,
+) {
+  let size = maxSize
+  context.font = fontTemplate.replace('{size}', String(size))
+  while (size > minSize && context.measureText(text).width > maxWidth) {
+    size -= 1
+    context.font = fontTemplate.replace('{size}', String(size))
+  }
+  let fitted = text
+  while (fitted.length > 1 && context.measureText(fitted).width > maxWidth) {
+    fitted = fitted.slice(0, -1).trimEnd()
+    if (context.measureText(`${fitted}…`).width <= maxWidth) {
+      fitted = `${fitted}…`
+      break
+    }
+  }
+  context.fillText(fitted, x, y)
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const value = parseInt(hex.slice(1), 16)
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255]
+}
+
+function mixHex(from: string, to: string, amount: number) {
+  const a = hexToRgb(from)
+  const b = hexToRgb(to)
+  const channel = (index: number) => Math.round(a[index] + (b[index] - a[index]) * amount)
+  return `rgb(${channel(0)}, ${channel(1)}, ${channel(2)})`
+}
+
+function relativeLuminance([red, green, blue]: [number, number, number]) {
+  const linear = (value: number) => {
+    const c = value / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+}
+
+function contrastRatio(a: [number, number, number], b: [number, number, number]) {
+  const [light, dark] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x)
+  return (light + 0.05) / (dark + 0.05)
+}
+
+/**
+ * Lightens a card's identity colour just enough (keeping its hue) that the
+ * dark ink used for card text reaches at least `minContrast` against it.
+ */
+function readableCardTint(color: string, ink: string, minContrast: number) {
+  const cream = '#f6f0e0'
+  const inkRgb = hexToRgb(ink)
+  for (let amount = 0.15; amount < 1; amount += 0.05) {
+    const mixed = mixHex(color, cream, amount).match(/\d+/g)!.map(Number) as [number, number, number]
+    if (contrastRatio(mixed, inkRgb) >= minContrast) return mixHex(color, cream, amount)
+  }
+  return cream
+}
+
 function wrapTextLines(
   context: CanvasRenderingContext2D,
   text: string,
@@ -833,19 +914,32 @@ function wrapTextLines(
   const words = text.split(' ')
   const lines: string[] = []
   let line = ''
+  let overflowed = false
 
-  for (const word of words) {
+  for (let wordIndex = 0; wordIndex < words.length; wordIndex += 1) {
+    const word = words[wordIndex]
     const testLine = line ? `${line} ${word}` : word
     if (context.measureText(testLine).width > maxWidth && line) {
       lines.push(line)
       line = word
-      if (lines.length >= maxLines) break
+      if (lines.length >= maxLines) {
+        overflowed = true
+        break
+      }
     } else {
       line = testLine
     }
   }
 
   if (lines.length < maxLines && line) lines.push(line)
+  // Text that did not fit ends in an ellipsis instead of silently vanishing.
+  if (overflowed && lines.length > 0) {
+    let last = lines[lines.length - 1]
+    while (last.length > 1 && context.measureText(`${last}…`).width > maxWidth) {
+      last = last.slice(0, -1).trimEnd()
+    }
+    lines[lines.length - 1] = `${last}…`
+  }
   return lines
 }
 
@@ -857,11 +951,12 @@ function drawWrappedText(
   maxWidth: number,
   lineHeight: number,
   maxLines = 3,
-) {
+): number {
   const lines = wrapTextLines(context, text, maxWidth, maxLines)
   lines.forEach((lineText, lineNumber) => {
     context.fillText(lineText, x, y + lineNumber * lineHeight)
   })
+  return lines.length
 }
 
 function drawImageCover(
@@ -907,29 +1002,28 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
     abilityTitle,
     abilityText,
     attackTitle,
-    attackMetric,
     attackText,
     weakness,
     resistance,
-    illustrator = 'Ryan Chen',
-    copyright = '©2026 Ryan Chen',
-    level = 'LV. 1.0',
-    hp = '99 HP',
   } = project
 
   const canvas = document.createElement('canvas')
   canvas.width = 900
   canvas.height = 1200
   const context = canvas.getContext('2d')!
+  const ink = '#172333'
 
   // The gold outer frame remains consistent while each project receives its
-  // own collectible-card color treatment.
+  // own collectible-card color treatment. The identity colour is lightened
+  // only as far as needed for the dark ink to stay readable (WCAG AA), so a
+  // dark colour such as Fontimize's navy keeps its hue without swallowing text.
   context.fillStyle = '#e8c326'
   context.fillRect(0, 0, canvas.width, canvas.height)
+  const tint = readableCardTint(color, ink, 3.2)
   const gradient = context.createLinearGradient(50, 30, 850, 1170)
-  gradient.addColorStop(0, color)
+  gradient.addColorStop(0, tint)
   gradient.addColorStop(0.55, '#e8e1d2')
-  gradient.addColorStop(1, color)
+  gradient.addColorStop(1, tint)
   context.fillStyle = gradient
   context.fillRect(28, 28, 844, 1144)
 
@@ -940,7 +1034,7 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
     context.fillRect(x, y, 3, 3)
   }
 
-  // Card header
+  // Card header: category badge and project title only.
   const typeLabel = type.toUpperCase()
   const typeFont = '800 21px "Geist Variable"'
   const typePaddingX = 18
@@ -954,39 +1048,25 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
   context.beginPath()
   context.roundRect(typeBadgeX, typeBadgeY, typeBadgeWidth, typeBadgeHeight, typeBadgeRadius)
   context.fill()
-  context.fillStyle = '#172333'
+  context.fillStyle = ink
   context.fillText(typeLabel, typeBadgeX + typePaddingX, 74)
-  context.font = '900 52px "Geist Variable"'
-  context.fillText(title.toUpperCase(), 56, 137)
-  context.font = '800 23px "Geist Variable"'
-  context.fillText(level, 560, 127)
-  context.font = '900 34px "Geist Variable"'
-  context.fillText(hp, 674, 128)
-  context.beginPath()
-  context.arc(827, 113, 29, 0, Math.PI * 2)
-  context.fillStyle = '#182f55'
-  context.fill()
-  context.fillStyle = '#fff'
-  context.textAlign = 'center'
-  context.font = '900 18px "Geist Variable"'
-  context.fillText('</>', 827, 120)
-  context.textAlign = 'left'
+  fillTextFitted(context, title.toUpperCase(), 56, 143, 790, '900 {size}px "Geist Variable"', 62, 36)
 
   // Framed project media
   context.fillStyle = '#b39116'
-  context.fillRect(54, 165, 792, 435)
+  context.fillRect(54, 165, 792, 400)
   context.fillStyle = '#f1d24b'
-  context.fillRect(65, 176, 770, 413)
-  const artwork = context.createRadialGradient(450, 340, 20, 450, 380, 460)
+  context.fillRect(65, 176, 770, 378)
+  const artwork = context.createRadialGradient(450, 330, 20, 450, 365, 440)
   artwork.addColorStop(0, color)
   artwork.addColorStop(1, '#0b1427')
   context.fillStyle = artwork
-  context.fillRect(79, 190, 742, 385)
+  context.fillRect(79, 190, 742, 350)
 
   const mediaX = 79
   const mediaY = 190
   const mediaWidth = 742
-  const mediaHeight = 385
+  const mediaHeight = 350
 
   if (mediaImage) {
     context.save()
@@ -1013,14 +1093,14 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
     context.textAlign = 'left'
   }
 
-  // Architecture summary bar
+  // Tech-stack bar
   const summaryBarX = 74
-  const summaryBarY = 615
+  const summaryBarY = 582
   const summaryBarWidth = 752
   const summaryPaddingX = 24
-  const summaryPaddingY = 8
-  const summaryLineHeight = 22
-  const summaryFontSize = 19
+  const summaryPaddingY = 10
+  const summaryLineHeight = 26
+  const summaryFontSize = 22
   context.font = `800 ${summaryFontSize}px "Geist Variable"`
   const summaryLines = wrapTextLines(
     context,
@@ -1029,14 +1109,14 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
     2,
   )
   const summaryBarHeight = Math.max(
-    48,
+    52,
     summaryPaddingY * 2 + (summaryLines.length - 1) * summaryLineHeight + summaryFontSize,
   )
   context.fillStyle = '#d6b52b'
   context.beginPath()
   context.roundRect(summaryBarX, summaryBarY, summaryBarWidth, summaryBarHeight, 9)
   context.fill()
-  context.fillStyle = '#172333'
+  context.fillStyle = ink
   context.textAlign = 'center'
   const summaryTextStartY = summaryBarY + summaryPaddingY + summaryFontSize - 4
   summaryLines.forEach((line, lineIndex) => {
@@ -1044,63 +1124,78 @@ function createProjectCard(project: Project, index: number, mediaImage?: CanvasI
   })
   context.textAlign = 'left'
 
-  // Primary ability
-  context.fillStyle = '#b5162f'
-  context.font = '900 32px Georgia'
-  context.fillText(abilityTitle, 72, 715)
-  context.fillStyle = '#172333'
-  context.font = '800 21px "Geist Variable"'
-  drawWrappedText(context, abilityText, 74, 750, 748, 26, 3)
-  context.strokeStyle = 'rgba(23,35,51,.5)'
-  context.lineWidth = 4
+  // A soft cream panel behind the description keeps body text readable
+  // whatever the card's colour is.
+  const panelTop = summaryBarY + summaryBarHeight + 14
+  context.fillStyle = 'rgba(252,249,240,.68)'
   context.beginPath()
-  context.moveTo(70, 823)
-  context.lineTo(830, 823)
+  context.roundRect(54, panelTop, 792, 1146 - panelTop, 22)
+  context.fill()
+
+  const textX = 78
+  const textWidth = 744
+  const bodyFontSize = 23
+  const bodyLineHeight = 30
+
+  // Standout feature
+  let cursor = panelTop + 48
+  context.fillStyle = '#9a1230'
+  context.font = '900 34px Georgia'
+  context.fillText(abilityTitle, textX, cursor)
+  cursor += 38
+  context.fillStyle = ink
+  context.font = `700 ${bodyFontSize}px "Geist Variable"`
+  cursor += (drawWrappedText(context, abilityText, textX, cursor, textWidth, bodyLineHeight, 4) - 1) * bodyLineHeight
+  cursor += 24
+  context.strokeStyle = 'rgba(23,35,51,.4)'
+  context.lineWidth = 3
+  context.beginPath()
+  context.moveTo(textX - 4, cursor)
+  context.lineTo(textX + textWidth + 4, cursor)
   context.stroke()
 
-  // Secondary attack and technology energy costs
-  const energyColors = ['#d7193f', '#6f9fbe', '#18334e']
-  energyColors.forEach((energyColor, energyIndex) => {
-    context.beginPath()
-    context.arc(92 + energyIndex * 52, 866, 19, 0, Math.PI * 2)
-    context.fillStyle = energyColor
-    context.fill()
-    context.strokeStyle = '#f5df77'
-    context.lineWidth = 4
-    context.stroke()
+  // Main capability
+  cursor += 44
+  context.fillStyle = '#9a1230'
+  context.font = '900 34px Georgia'
+  fillTextFitted(context, attackTitle, textX, cursor, textWidth, '900 {size}px Georgia', 34, 24)
+  cursor += 38
+  context.fillStyle = ink
+  context.font = `700 ${bodyFontSize}px "Geist Variable"`
+  cursor += (drawWrappedText(context, attackText, textX, cursor, textWidth, bodyLineHeight, 4) - 1) * bodyLineHeight
+  cursor += 24
+  context.strokeStyle = 'rgba(23,35,51,.4)'
+  context.beginPath()
+  context.moveTo(textX - 4, cursor)
+  context.lineTo(textX + textWidth + 4, cursor)
+  context.stroke()
+
+  // Requirements and strengths
+  const noteFontSize = 21
+  const noteLabelWidth = 126
+  const noteLineHeight = 27
+  cursor += 36
+  const notes: Array<[string, string]> = [
+    ['Limits', weakness.replace(/;\s*$/, '')],
+    ['Strengths', resistance.replace(/;\s*$/, '')],
+  ]
+  notes.forEach(([label, text]) => {
+    context.fillStyle = '#9a1230'
+    context.font = `900 ${noteFontSize}px "Geist Variable"`
+    context.fillText(label, textX, cursor)
+    context.fillStyle = ink
+    context.font = `700 ${noteFontSize}px "Geist Variable"`
+    const lineCount = drawWrappedText(
+      context,
+      text,
+      textX + noteLabelWidth,
+      cursor,
+      textWidth - noteLabelWidth,
+      noteLineHeight,
+      2,
+    )
+    cursor += lineCount * noteLineHeight + 8
   })
-  context.fillStyle = '#172333'
-  context.font = '900 31px Georgia'
-  context.fillText(attackTitle, 240, 876)
-  context.textAlign = 'right'
-  context.font = '900 40px "Geist Variable"'
-  context.fillText(attackMetric, 830, 877)
-  context.textAlign = 'left'
-  context.font = '800 20px "Geist Variable"'
-  drawWrappedText(context, attackText, 74, 918, 748, 25, 3)
-
-  // Footer stats
-  context.strokeStyle = 'rgba(23,35,51,.58)'
-  context.lineWidth = 4
-  context.beginPath()
-  context.moveTo(70, 990)
-  context.lineTo(830, 990)
-  context.stroke()
-  context.fillStyle = '#172333'
-  context.font = '800 17px "Geist Variable"'
-  context.fillText('weakness', 74, 1026)
-  context.font = '800 17px "Geist Variable"'
-  context.fillText(weakness, 196, 1026)
-  context.font = '800 17px "Geist Variable"'
-  context.fillText('resistance', 74, 1060)
-  context.font = '800 17px "Geist Variable"'
-  context.fillText(resistance, 196, 1060)
-  context.font = '800 14px "Geist Variable"'
-  context.fillText(`Illus. ${illustrator}`, 72, 1127)
-  context.textAlign = 'center'
-  context.fillText(copyright, 450, 1127)
-  context.textAlign = 'right'
-  context.fillText(`${String(index + 1).padStart(3, '0')} / 100`, 826, 1127)
 
   return finishTexture(new CanvasTexture(canvas))
 }
