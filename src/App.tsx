@@ -1,9 +1,36 @@
 import emailjs from '@emailjs/browser'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import './App.css'
-import portraitImage from './assets/Grokified.png'
-import ProjectSlabCarousel from './ProjectSlabCarousel'
-import WavyRibbon from './WavyRibbon'
+import portraitImage from './assets/Grokified.webp'
+
+// The 3D carousel pulls in three.js / react-three-fiber (~75% of the bundle),
+// so load it as a separate chunk and let the hero paint first.
+//
+// Deliberately NOT React.lazy + <Suspense>: a Suspense boundary above the
+// react-three-fiber <Canvas> makes React (StrictMode in `npm run dev`) tear
+// down the canvas and R3F then force-loses its WebGL context, leaving the
+// carousel blank. Loading the module in an effect avoids any boundary.
+function ProjectCarouselLoader() {
+  const [carousel, setCarousel] = useState<typeof import('./ProjectSlabCarousel') | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void import('./ProjectSlabCarousel').then((module) => {
+      if (!cancelled) setCarousel(module)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (!carousel) {
+    return (
+      <div className="slab-story slab-story-loading" role="status">
+        <p>Loading projects…</p>
+      </div>
+    )
+  }
+  return <carousel.default />
+}
 
 const ArrowIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -56,7 +83,6 @@ function App() {
 
   return (
     <main>
-      <WavyRibbon />
       <header className="site-header">
         <a className="brand" href="#introduction" aria-label="Back to top">
           <span>RC</span>
@@ -130,7 +156,7 @@ function App() {
           <h2>Personal<br /><em>projects.</em></h2>
           <p>A collection of my personal projects that I have worked on.</p>
         </div>
-        <ProjectSlabCarousel />
+        <ProjectCarouselLoader />
       </section>
 
       <section className="section skills-section" id="skills">

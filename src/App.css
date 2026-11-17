@@ -51,20 +51,6 @@ button, input, textarea { font: inherit; }
 
 main { min-width: 320px; overflow-x: clip; overflow-y: visible; position: relative; }
 
-.ribbon-canvas {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.ribbon-canvas::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at center, transparent 40%, rgba(var(--background-rgb), .2));
-}
-
 .site-header,
 .hero-section,
 .section,
@@ -225,7 +211,6 @@ footer {
   border: 1px solid rgba(255,255,255,.8);
   border-radius: 36px;
   box-shadow: 0 32px 80px rgba(var(--foreground-rgb), .08);
-  backdrop-filter: blur(6px);
 }
 .section-heading { display: grid; grid-template-columns: 170px 1fr 310px; gap: 4vw; align-items: end; margin-bottom: 75px; }
 .section-heading > div { align-self: start; display: flex; align-items: center; gap: 12px; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
@@ -267,6 +252,17 @@ footer {
   /* Stage height for the sticky carousel. Small-viewport units keep the
      instructions bar and the progress rail above iOS Safari's toolbars. */
   --stage-h: var(--viewport-h);
+}
+/* Placeholder shown while the 3D carousel chunk loads; it keeps the same
+   360vh height as the real story so nothing below jumps when it swaps in. */
+.slab-story-loading p {
+  position: sticky;
+  top: 0;
+  height: var(--stage-h);
+  margin: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
 }
 .slab-story.is-inspecting {
   /* While inspecting the page can't scroll, so the toolbar state is stable:
@@ -641,7 +637,6 @@ footer {
   position: relative;
   border-radius: 36px;
   box-shadow: 0 30px 80px rgba(var(--foreground-rgb), .22);
-  backdrop-filter: blur(8px);
 }
 .skills-section::before { content: '10'; position: absolute; right: -20px; top: -70px; color: rgba(255,255,255,.025); font-size: 360px; font-weight: 900; line-height: 1; }
 .light-heading h2 { color: var(--on-dark); }

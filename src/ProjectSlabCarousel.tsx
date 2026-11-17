@@ -10,11 +10,12 @@ import {
   MeshBasicMaterial,
   PerspectiveCamera,
   SRGBColorSpace,
+  type Texture,
   Vector3,
 } from 'three'
-import cardBack from './assets/back.png'
-import meiganImg from './assets/meigan.png'
-import omniImg from './assets/omni.png'
+import cardBack from './assets/back.webp'
+import meiganImg from './assets/meigan.webp'
+import omniImg from './assets/omni.webp'
 import fontimizeImg from './assets/fontimize.png'
 import kirbyImg from './assets/kirby.webp'
 
@@ -1119,8 +1120,6 @@ function AcrylicRail({
         opacity={0.44}
         roughness={0.12}
         metalness={0.04}
-        transmission={0.35}
-        thickness={0.25}
       />
     </RoundedBox>
   )
@@ -1134,6 +1133,7 @@ function PSASlab({
   onInspect,
   inspectionPan,
   layoutRef,
+  cardBackTexture,
 }: {
   project: (typeof projects)[number]
   index: number
@@ -1142,6 +1142,7 @@ function PSASlab({
   onInspect: () => void
   inspectionPan: { current: number }
   layoutRef: { current: InspectionLayout }
+  cardBackTexture: Texture
 }) {
   const model = useRef<Group>(null)
   const drag = useRef({
@@ -1171,23 +1172,14 @@ function PSASlab({
     void geistReady
     return createProjectCard(project, index, loadedProjectImage.image as HTMLImageElement)
   }, [index, project, loadedProjectImage, geistReady])
-  const loadedProjectCardBack = useTexture(cardBack)
-  const projectCardBack = useMemo(() => {
-    const texture = loadedProjectCardBack.clone()
-    texture.colorSpace = SRGBColorSpace
-    texture.anisotropy = 8
-    texture.needsUpdate = true
-    return texture
-  }, [loadedProjectCardBack])
 
   useEffect(
     () => () => {
       frontLabel.dispose()
       backLabel.dispose()
       projectCard.dispose()
-      projectCardBack.dispose()
     },
-    [backLabel, frontLabel, projectCard, projectCardBack],
+    [backLabel, frontLabel, projectCard],
   )
 
   useFrame((_, delta) => {
@@ -1288,7 +1280,7 @@ function PSASlab({
         event.stopPropagation()
       }}
     >
-      <RoundedBox args={[2.5, 3.65, 0.2]} radius={0.13} smoothness={8} castShadow>
+      <RoundedBox args={[2.5, 3.65, 0.2]} radius={0.13} smoothness={8}>
         <meshPhysicalMaterial
           color="#faf9f5"
           transparent
@@ -1315,7 +1307,7 @@ function PSASlab({
           layoutRef={layoutRef}
         />
       ) : null}
-      <mesh position={[0, -0.34, 0]} castShadow>
+      <mesh position={[0, -0.34, 0]}>
         <boxGeometry args={[1.78, 2.38, 0.085]} />
         <meshStandardMaterial attach="material-0" color="#252521" roughness={0.72} />
         <meshStandardMaterial attach="material-1" color="#252521" roughness={0.72} />
@@ -1329,7 +1321,7 @@ function PSASlab({
         />
         <meshStandardMaterial
           attach="material-5"
-          map={projectCardBack}
+          map={cardBackTexture}
           roughness={0.38}
           metalness={0.08}
         />
@@ -1373,6 +1365,18 @@ function CarouselRig({
   const items = useRef<Array<Group | null>>([])
   const rig = useRef<Group>(null)
   const phase = useRef(0)
+
+  // One card-back texture shared by every slab (previously each slab cloned
+  // it, which uploaded the same image to the GPU once per slab).
+  const loadedCardBack = useTexture(cardBack)
+  const cardBackTexture = useMemo(() => {
+    const texture = loadedCardBack.clone()
+    texture.colorSpace = SRGBColorSpace
+    texture.anisotropy = 8
+    texture.needsUpdate = true
+    return texture
+  }, [loadedCardBack])
+  useEffect(() => () => cardBackTexture.dispose(), [cardBackTexture])
 
   useFrame((state, delta) => {
     const camera = state.camera as PerspectiveCamera
@@ -1529,6 +1533,7 @@ function CarouselRig({
             onInspect={onInspect}
             inspectionPan={inspectionPan}
             layoutRef={layoutRef}
+            cardBackTexture={cardBackTexture}
           />
         </group>
       ))}
@@ -1543,6 +1548,8 @@ export default function ProjectSlabCarousel() {
   const [storyActive, setStoryActive] = useState(false)
   const inspectionPan = useRef(0)
   const story = useRef<HTMLDivElement>(null)
+  // True while the story section is within about half a screen of the viewport.
+  const [inView, setInView] = useState(true)
   const progressFill = useRef<HTMLDivElement>(null)
   const progressRunner = useRef<HTMLDivElement>(null)
   const selectionTimer = useRef<number | null>(null)
@@ -1745,6 +1752,21 @@ export default function ProjectSlabCarousel() {
     }
   }
 
+  // Only run the WebGL render loop while the carousel is on (or near) the
+  // screen. Scroll-driven state (selected slab, progress rail) is computed from
+  // scroll events above, not from the render loop, so pausing here doesn't
+  // break it; the slabs simply glide into place when rendering resumes.
+  useEffect(() => {
+    const element = story.current
+    if (!element || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { rootMargin: '50% 0px 50% 0px' },
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div className={`slab-story${inspecting ? ' is-inspecting' : ''}`} ref={story}>
       <div className="slab-story-sticky">
@@ -1754,12 +1776,12 @@ export default function ProjectSlabCarousel() {
               <Canvas
                 camera={{ position: [0, 0.05, 8.4], fov: 54 }}
                 dpr={compactDevice ? [1, 1.5] : [1, 1.75]}
-                shadows
+                frameloop={inView || inspecting ? 'always' : 'never'}
                 gl={{ antialias: true, alpha: true }}
               >
                 {inspecting ? <color attach="background" args={[new Color('#f5f3ed')]} /> : null}
                 <ambientLight intensity={1.3} />
-                <directionalLight position={[-4, 6, 7]} intensity={2.4} castShadow />
+                <directionalLight position={[-4, 6, 7]} intensity={2.4} />
                 <directionalLight position={[5, -2, 5]} intensity={1.2} color="#cdcfb5" />
                 <pointLight position={[0, 1, 5]} intensity={1.5} color="#ffffff" />
                 <CarouselRig
